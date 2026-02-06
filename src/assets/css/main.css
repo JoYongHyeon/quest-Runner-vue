@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Press Start 2P", system-ui, sans-serif;
+  
+  /* Reddit Custom Dark Palette (Corrected) */
+  --color-reddit-dark: #0B1416;       /* 전체 배경 (Deep Black) */
+  --color-reddit-card: #1A282D;       /* 카드 배경 (Dark Gray) */
+  --color-reddit-border: #343536;     /* 경계선 */
+  --color-reddit-text: #D7DADC;       /* 메인 텍스트 */
+  --color-reddit-text-muted: #818384; /* 보조 텍스트 */
+  --color-reddit-hover: #272729;      /* 호버 배경 */
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer components {
+    /* --- Components --- */
+    
+    .btn {
+        @apply px-4 py-2 rounded-full font-bold transition-all duration-200 cursor-pointer inline-flex items-center justify-center;
+    }
+
+    .btn-primary {
+        @apply bg-blue-600 text-white hover:bg-blue-700 shadow-sm active:scale-95;
+        @apply dark:bg-[#D93A00] dark:hover:bg-[#C83500] dark:text-white dark:border-none;
+    }
+
+    /* Card Component - Reddit Style Fixed */
+    .card {
+        @apply bg-white border border-gray-200 rounded transition-colors duration-300;
+        /* 다크모드: 배경을 투명하게 하지 말고, 명확한 카드색(#1A282D) 지정 */
+        @apply dark:bg-[var(--color-reddit-card)] dark:border-[var(--color-reddit-border)];
+    }
+    
+    /* Hover Effect for Feed Cards */
+    .card-hover:hover {
+        @apply border-gray-400 dark:border-gray-500 cursor-pointer;
+        /* 레딧은 호버 시 배경색이 살짝 밝아짐 */
+        @apply dark:bg-[#203036]; 
+    }
+
+    .badge {
+        @apply px-2.5 py-0.5 rounded text-xs font-bold inline-block;
+    }
+    
+    .badge-primary {
+        @apply bg-blue-50 text-blue-700 border border-blue-100;
+        @apply dark:bg-[#2D383C] dark:text-[#D7DADC] dark:border-[#343536];
+    }
+}
+
+/* Utility Classes */
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}
+
+/* Global Styles - Background Fix */
+html, body, #app {
+    @apply h-full w-full;
+}
+
+body {
+    @apply bg-gray-100 text-gray-900 transition-colors duration-300;
+    /* 핵심: 다크모드 시 body 전체 배경색을 #0B1416으로 강제 */
+    @apply dark:bg-[var(--color-reddit-dark)] dark:text-[var(--color-reddit-text)];
+}
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar {
+    width: 8px;
+    background-color: var(--color-reddit-dark);
+}
+.dark ::-webkit-scrollbar-thumb {
+    background-color: var(--color-reddit-border);
+    border-radius: 4px;
+}
