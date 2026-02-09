@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import * as path from "node:path";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,6 +9,11 @@ export default defineConfig({
     vue(),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    },
+  },
   server: {
     // 프록시 설정: 프론트엔드(5173)로 오는 특정 요청을 백엔드(8070)로 전달
     proxy: {

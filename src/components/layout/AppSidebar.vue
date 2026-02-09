@@ -1,63 +1,111 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useSidebar } from '../../composables/useSidebar';
+import iconHome from '@/assets/images/icons/main_home.png';
+import iconIntro from '@/assets/images/icons/main_intro.png';
+import iconTeam from '@/assets/images/icons/main_team.png';
+import iconBug from '@/assets/images/icons/main_bug.png';
 
-// 사이드바 상태 관리 Hook 사용
 const { isSidebarOpen } = useSidebar();
+const route = useRoute();
 
-/**
- * 메뉴 아이템 정의
- * - icon: 이모지 또는 아이콘 컴포넌트
- * - label: 메뉴 표시명
- * - link: 이동 경로
- */
-const menuItems = [
-    { icon: '🏠', label: '홈', link: '/' },
-    { icon: '🔥', label: '인기', link: '/popular' },
-    { icon: '🛡️', label: '내 파티', link: '/my-party' },
-    { icon: '📜', label: '지원 현황', link: '/applications' },
+// 1. 상단 고정 메뉴 (토글 없음)
+const fixedMenuItems = [
+    { icon: iconHome, label: '홈', link: '/', type: 'image' },
+    { icon: iconTeam, label: '내 파티', link: '/my-party', type: 'image' },
 ];
+
+// 2. 하단 토글 메뉴 그룹
+const menuGroups = ref([
+    {
+        title: 'COMMUNITIES',
+        isOpen: true,
+        items: [
+            { icon: '🔥', label: '인기', link: '/popular', type: 'text' },
+            { icon: '📜', label: '지원 현황', link: '/applications', type: 'text' },
+        ]
+    },
+    {
+        title: 'RESOURCES',
+        isOpen: true,
+        items: [
+            { icon: iconIntro, label: '소개', link: '/about', type: 'image' },
+            { icon: iconBug, label: '버그 제보', link: '/report', type: 'image' },
+        ]
+    }
+]);
+
+const toggleGroup = (index: number) => {
+    menuGroups.value[index].isOpen = !menuGroups.value[index].isOpen;
+};
+
+// 현재 경로와 링크가 일치하는지 확인하는 함수
+const isActive = (path: string) => route.path === path;
 </script>
 
 <template>
-  <!-- 
-    App Sidebar Component (Left Navigation)
-    - 데스크탑: 고정 위치 (Fixed), 토글 시 너비 변경 (Width Transition)
-    - 모바일: 화면 밖으로 숨김, 토글 시 등장 (Translate Transition)
-    - 다크 모드 지원: bg-[var(--color-reddit-dark)]
-  -->
   <aside 
     class="fixed lg:fixed top-14 left-0 h-[calc(100vh-56px)] bg-white border-r border-gray-200 overflow-y-auto z-40
            dark:bg-[var(--color-reddit-dark)] dark:border-[var(--color-reddit-border)]
-           transition-all duration-300 ease-in-out"
+           transition-all duration-300 ease-in-out scrollbar-hide"
     :class="[
-        // 열림: 너비 270px, 위치 0
-        isSidebarOpen ? 'w-[270px] translate-x-0' : 
-        // 닫힘: 너비 0, 위치 -100% (모바일) / 투명화 (데스크탑)
-        'w-0 -translate-x-full lg:w-0 lg:translate-x-0 opacity-0 lg:opacity-100 lg:invisible'
+        isSidebarOpen ? 'w-[270px] translate-x-0' : 'w-0 -translate-x-full lg:w-0 lg:translate-x-0 opacity-0 lg:opacity-100 lg:invisible'
     ]"
   >
-    <!-- 내부 네비게이션 컨테이너 (너비 고정으로 찌그러짐 방지) -->
-    <nav class="p-2 space-y-1 w-[270px]"> 
+    <nav class="p-3 w-[270px]">
         
-        <!-- 메인 메뉴 루프 -->
-        <a v-for="item in menuItems" :key="item.label" :href="item.link" 
-           class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors text-sm
-                  dark:text-[var(--color-reddit-text)] dark:hover:bg-[var(--color-reddit-hover)]">
-            <span class="text-lg">{{ item.icon }}</span>
-            <span class="whitespace-nowrap">{{ item.label }}</span>
-        </a>
-
-        <!-- 구분선 -->
-        <hr class="my-4 border-gray-200 mx-4 dark:border-[var(--color-reddit-border)]"/>
-        
-        <!-- 하단 리소스 섹션 -->
-        <div class="px-4 mb-2 text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-[var(--color-reddit-text-muted)] whitespace-nowrap">
-            리소스
+        <!-- 1. 상단 고정 메뉴 (Home, Popular) -->
+        <div class="mb-3 space-y-1 border-b border-gray-200 dark:border-[#343536] pb-3">
+            <router-link v-for="item in fixedMenuItems" :key="item.label" :to="item.link" 
+               class="flex items-center gap-3 px-3 py-2 rounded transition-colors text-sm font-medium"
+               :class="isActive(item.link) 
+                   ? 'bg-gray-200 text-black dark:bg-[#272729] dark:text-[#D7DADC]' 
+                   : 'text-gray-700 hover:bg-gray-100 dark:text-[#818384] dark:hover:bg-[#272729]'">
+                
+                <img v-if="item.type === 'image'" :src="item.icon" :alt="item.label" class="w-5 h-5 object-contain dark:invert" />
+                <span v-else class="w-5 text-center text-lg">{{ item.icon }}</span>
+                
+                <span>{{ item.label }}</span>
+            </router-link>
         </div>
-        <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors text-sm
-                   dark:text-[var(--color-reddit-text)] dark:hover:bg-[var(--color-reddit-hover)]">
-            <span class="whitespace-nowrap">ℹ️ 소개</span>
-        </a>
+
+        <!-- 2. 토글 메뉴 그룹 -->
+        <div v-for="(group, index) in menuGroups" :key="group.title" class="mb-2">
+            
+            <!-- 그룹 헤더 -->
+            <div @click="toggleGroup(index)"
+                 class="flex items-center justify-between px-3 py-2 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-[#272729] transition-colors select-none group">
+                
+                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider dark:text-[#818384] group-hover:text-gray-900 dark:group-hover:text-[#D7DADC]">
+                    {{ group.title }}
+                </span>
+                
+                <!-- Chevron Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" 
+                     class="w-3 h-3 text-gray-500 transition-transform duration-200"
+                     :class="group.isOpen ? 'rotate-180' : ''">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+            </div>
+
+            <!-- 하위 메뉴 -->
+            <div v-show="group.isOpen" class="mt-0.5 space-y-0.5">
+                <router-link v-for="item in group.items" :key="item.label" :to="item.link" 
+                   class="flex items-center gap-3 px-3 py-2 rounded transition-colors text-sm"
+                   :class="isActive(item.link)
+                       ? 'bg-gray-200 text-black dark:bg-[#272729] dark:text-[#D7DADC]' 
+                       : 'text-gray-700 hover:bg-gray-100 dark:text-[#D7DADC] dark:hover:bg-[#272729]'">
+                    
+                    <!-- [수정됨] v-if / v-else 로직 확실하게 적용 -->
+                    <img v-if="item.type === 'image'" :src="item.icon" :alt="item.label" class="w-5 h-5 object-contain dark:invert" />
+                    <span v-else class="w-5 text-center text-lg">{{ item.icon }}</span>
+                    
+                    <span>{{ item.label }}</span>
+                </router-link>
+            </div>
+        </div>
+
     </nav>
   </aside>
 </template>

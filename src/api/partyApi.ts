@@ -15,7 +15,7 @@ export interface PartyCreateReqDTO {
     title: string;
     content: string;
     region: Region;
-    slots: { position: Position }[]; // 단순화된 슬롯 요청
+    slots: Position[];
 }
 
 export interface PartyApplyReqDTO {

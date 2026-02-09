@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../composables/useAuth';
-import { memberApi, type OnboardingReqDTO } from '../api/memberApi';
+import { useAuth } from '../../composables/useAuth';
+import { memberApi, type OnboardingReqDTO } from '../../api/memberApi';
 
 /**
  * OnboardingView.vue
- * - 회원가입 직후(PENDING_PROFILE), 필수 정보를 입력받는 페이지
- * - 닉네임, 포지션, 지역, 기술 스택을 입력받아 'ACTIVE' 상태로 전환
+ * - 회원가입 직후(PENDING_PROFILE), 필수 정보를 입력받는 페이지입니다.
+ * - 닉네임, 포지션, 지역, 기술 스택, 링크 정보를 입력받아 'ACTIVE' 상태로 전환합니다.
  */
 
 const router = useRouter();
@@ -30,6 +30,7 @@ const techOptions = ['Java', 'Spring', 'Python', 'JavaScript', 'Vue', 'React', '
 
 /**
  * 컴포넌트 마운트 시 초기화 로직
+ * - 이미 입력된 정보가 있다면 폼에 채워넣습니다 (수정 편의성).
  */
 onMounted(() => {
     if (currentUser.value) {
@@ -39,7 +40,11 @@ onMounted(() => {
 });
 
 /**
- * 폼 제출 처리
+ * 폼 제출 처리 (Submit Handler)
+ * 1. 유효성 검사 (기술 스택 필수)
+ * 2. API 호출 (온보딩 완료)
+ * 3. 내 정보 갱신 (상태 변경 반영: PENDING -> ACTIVE)
+ * 4. 메인 페이지 이동
  */
 const handleSubmit = async () => {
     try {
@@ -109,6 +114,7 @@ const handleSubmit = async () => {
                     <option value="GYEONGGI">경기/인천</option>
                     <option value="DAEJEON">대전/충남</option>
                     <option value="BUSAN">부산/경남</option>
+                    <option value="GWANGJU">광주/전라</option>
                     <option value="ETC">기타 (온라인)</option>
                 </select>
             </div>
@@ -135,6 +141,29 @@ const handleSubmit = async () => {
             <input v-model="form.intro" type="text" 
                    placeholder="나를 표현하는 짧은 문장을 입력해주세요."
                    class="w-full p-2 border rounded dark:bg-[#272729] dark:border-[#343536] dark:text-white" />
+        </div>
+
+        <!-- 5. 링크 정보 (New!) -->
+        <div class="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200 dark:bg-[#202022] dark:border-[#343536]">
+            <label class="block text-sm font-bold mb-1 dark:text-[#D7DADC]">링크 (선택)</label>
+            
+            <div class="flex items-center">
+                <span class="w-20 text-sm font-bold text-gray-500 dark:text-[#818384]">GitHub</span>
+                <input v-model="form.gitUrl" type="url" placeholder="https://github.com/..." 
+                       class="flex-1 p-2 border rounded text-sm dark:bg-[#272729] dark:border-[#343536] dark:text-white" />
+            </div>
+            
+            <div class="flex items-center">
+                <span class="w-20 text-sm font-bold text-gray-500 dark:text-[#818384]">Blog</span>
+                <input v-model="form.blogUrl" type="url" placeholder="https://velog.io/..." 
+                       class="flex-1 p-2 border rounded text-sm dark:bg-[#272729] dark:border-[#343536] dark:text-white" />
+            </div>
+
+            <div class="flex items-center">
+                <span class="w-20 text-sm font-bold text-gray-500 dark:text-[#818384]">Resume</span>
+                <input v-model="form.resumeLink" type="url" placeholder="이력서/포트폴리오 링크" 
+                       class="flex-1 p-2 border rounded text-sm dark:bg-[#272729] dark:border-[#343536] dark:text-white" />
+            </div>
         </div>
 
         <!-- 제출 버튼 -->

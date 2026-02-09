@@ -2,12 +2,29 @@
 import { useTheme } from '../../composables/useTheme';
 import { useAuth } from '../../composables/useAuth';
 import UserDropdown from './UserDropdown.vue'; // 드롭다운 컴포넌트 import
+import { useRouter } from 'vue-router';
 
 // 테마 관리 (Dark/Light)
 const { isDark, toggleTheme } = useTheme();
 
-// 인증 관리 (로그인 상태 확인)
-const { isLoggedIn, login } = useAuth();
+// 인증 관리 (로그인 상태 및 현재 유저 정보)
+const { isLoggedIn, login, currentUser } = useAuth();
+const router = useRouter();
+
+/**
+ * 만들기 버튼 클릭 핸들러
+ * - 온보딩(PENDING_PROFILE) 상태일 경우 생성을 막고 프로필 설정으로 유도합니다.
+ * - 정상(ACTIVE) 상태일 경우 생성 페이지로 이동합니다.
+ */
+const handleCreateClick = () => {
+    if (currentUser.value?.status === 'PENDING_PROFILE') {
+        if (confirm('모험가 등록(프로필 완성)을 먼저 진행해야 퀘스트를 생성할 수 있습니다.\n이동하시겠습니까?')) {
+            router.push('/onboarding');
+        }
+        return;
+    }
+    router.push('/create');
+};
 </script>
 
 <template>
@@ -61,7 +78,9 @@ const { isLoggedIn, login } = useAuth();
         <!-- [분기] 로그인 상태에 따라 UI 변경 -->
         <template v-if="isLoggedIn">
             <!-- Case A: 로그인 완료 (퀘스트 생성 버튼 + 드롭다운 메뉴) -->
-            <button class="hidden md:flex btn rounded-full px-4 py-1.5 text-sm font-bold border border-gray-300 hover:bg-gray-50 
+            <!-- [수정됨] 클릭 시 handleCreateClick 호출 -->
+            <button @click="handleCreateClick"
+                    class="hidden md:flex btn rounded-full px-4 py-1.5 text-sm font-bold border border-gray-300 hover:bg-gray-50 
                            dark:border-gray-600 dark:text-white dark:hover:bg-[var(--color-reddit-hover)]">
                 <span>+ 만들기</span>
             </button>
