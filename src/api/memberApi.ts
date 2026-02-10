@@ -1,12 +1,10 @@
 import api from './axios';
-import type {Position} from "postcss";
-import type {Member, Region} from "../types/Member.ts";
+import type { Position } from '../types/Member'; // 올바른 경로로 수정
 
 // --- DTO Types ---
 export interface OnboardingReqDTO {
     nickname: string;
     position: Position;
-    region: Region;
     intro?: string;
     gitUrl?: string;
     blogUrl?: string;
@@ -14,8 +12,18 @@ export interface OnboardingReqDTO {
     techStacks: string[];
 }
 
-export interface MemberProfileResDTO extends Member {
-    // Member 인터페이스와 동일하지만, 필요시 확장 가능
+export interface MemberProfileResDTO {
+    id: number;
+    email: string;
+    nickname: string;
+    status: 'PENDING_PROFILE' | 'ACTIVE';
+    position: Position;
+    techStacks: string[];
+}
+
+// [New] 닉네임 중복 확인 응답
+export interface NicknameCheckResDTO {
+    isAvailable: boolean;
 }
 
 /**
@@ -34,11 +42,24 @@ export const memberApi = {
     },
 
     /**
-     * 온보딩(프로필 완성) 요청
-     * PATCH /api/members/onboarding
+     * 프로필 완성 요청
+     * PATCH /api/members/profile
      */
     async completeOnboarding(req: OnboardingReqDTO) {
-        const { data } = await api.patch<{ code: string }>('/members/onboarding', req);
+        const { data } = await api.patch<{ code: string }>('/members/profile', req);
         return data;
+    },
+
+    /**
+     * 닉네임 중복 확인
+     * GET /api/members/check-nickname?nickname=...
+     */
+    async checkNickname(nickname: string) {
+        // ApiResponse 구조에 맞춰 data.data를 반환하도록 수정
+        const { data } = await api.get<{ code: string; data: NicknameCheckResDTO }>(
+            '/members/check-nickname',
+            { params: { nickname } }
+        );
+        return data.data;
     }
 };

@@ -1,11 +1,9 @@
 import api from './axios';
-import type {Region} from "../types/Member.ts";
 import type {Position} from "postcss";
 import type {ApplicantStatus, Party} from "../types/Party.ts";
 
 // --- DTO Types ---
 export interface PartySearchCondition {
-    region?: Region;
     position?: Position;
     page?: number;
     size?: number;
@@ -14,7 +12,6 @@ export interface PartySearchCondition {
 export interface PartyCreateReqDTO {
     title: string;
     content: string;
-    region: Region;
     slots: Position[];
 }
 

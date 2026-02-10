@@ -1,8 +1,9 @@
-import { ref, computed, type ComputedRef } from 'vue';
-import type { Member } from '../types/Member';
-import { memberApi } from '../api/memberApi';
+import {computed, type ComputedRef, ref} from 'vue';
+import type {Member} from '../types/Member';
+import {memberApi} from '../api/memberApi';
+import {authApi} from '../api/authApi';
+import {setAccessToken} from '../api/axios';
 
-// 반환 타입 명시 (TypeScript 에러 방지)
 interface UseAuthReturn {
     isLoggedIn: ComputedRef<boolean>;
     currentUser: ComputedRef<Member | null>;
@@ -14,30 +15,19 @@ interface UseAuthReturn {
     requireOnboarding: () => boolean;
 }
 
-// 전역 인증 상태 (Singleton)
 const isLoggedIn = ref(false);
 const currentUser = ref<Member | null>(null);
 
-/**
- * [Composable] 인증 및 사용자 세션 관리
- * - 로그인, 로그아웃, 내 정보 조회 등 인증 관련 비즈니스 로직을 담당합니다.
- */
 export function useAuth(): UseAuthReturn {
 
-    /**
-     * 로그인 프로세스 시작
-     */
     const login = () => {
         window.location.href = '/oauth2/authorization/google';
     };
 
-    /**
-     * 로그인 성공 후처리
-     */
-    const loginSuccess = async (accessToken: string) => {
-        localStorage.setItem('accessToken', accessToken);
+    const loginSuccess = async (token: string) => {
+        // [수정] localStorage 대신 메모리(axios)에 저장
+        setAccessToken(token);
         isLoggedIn.value = true;
-
         try {
             await fetchMyProfile();
         } catch (e) {
@@ -46,45 +36,32 @@ export function useAuth(): UseAuthReturn {
         }
     };
 
-    /**
-     * 내 프로필 정보 조회 및 상태 갱신
-     */
     const fetchMyProfile = async () => {
         try {
-            const member = await memberApi.getMyProfile();
-            currentUser.value = member;
+            currentUser.value = await memberApi.getMyProfile();
         } catch (e) {
             throw e;
         }
     };
 
-    /**
-     * 로그아웃 처리
-     */
     const logout = () => {
         isLoggedIn.value = false;
         currentUser.value = null;
-        localStorage.removeItem('accessToken');
+        setAccessToken(null); // 토큰 삭제
+        // TODO: 백엔드 로그아웃 API가 있다면 호출하여 쿠키 삭제 필요
     };
 
-    /**
-     * 앱 초기화 시 로그인 상태 복구
-     */
     const checkAuth = async () => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            isLoggedIn.value = true;
-            try {
-                await fetchMyProfile();
-            } catch (e) {
-                logout();
-            }
+        // [수정] localStorage 확인 대신 Refresh API 호출 (Silent Refresh)
+        try {
+            const newToken = await authApi.refreshToken();
+            await loginSuccess(newToken);
+        } catch (e) {
+            // Refresh 실패 = 로그인 안 된 상태 (조용히 실패)
+            logout();
         }
     };
 
-    /**
-     * 온보딩 완료 여부 확인 (Guard)
-     */
     const requireOnboarding = (): boolean => {
         if (!isLoggedIn.value) {
             alert('로그인이 필요한 기능입니다.');
@@ -93,8 +70,8 @@ export function useAuth(): UseAuthReturn {
         }
 
         if (currentUser.value?.status === 'PENDING_PROFILE') {
-            if (confirm('이 기능을 이용하려면 먼저 모험가 등록(프로필 완성)을 해야 합니다.이동하시겠습니까?')) {
-                window.location.href = '/onboarding'; 
+            if (confirm('이 기능을 이용하려면 먼저 프로필을 완성해야 합니다.\n내 프로필 설정으로 이동하시겠습니까?')) {
+                window.location.href = '/profile'; 
             }
             return false;
         }

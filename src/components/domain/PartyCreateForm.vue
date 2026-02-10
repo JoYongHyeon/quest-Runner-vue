@@ -16,7 +16,6 @@ const router = useRouter();
 const form = ref<PartyCreateReqDTO>({
     title: '',
     content: '',
-    region: 'SEOUL', // 기본값
     slots: [] // 모집 슬롯 배열 (Position[])
 });
 
@@ -77,22 +76,6 @@ const handleSubmit = async () => {
                  placeholder="예: 사이드 프로젝트 백엔드 개발자 구합니다!"
                  class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors
                         dark:bg-[#272729] dark:border-[#343536] dark:text-white dark:focus:ring-blue-600" />
-      </div>
-
-      <!-- 2. 활동 지역 -->
-      <div>
-          <label class="block text-sm font-bold mb-2 dark:text-[#D7DADC]">
-              활동 지역 <span class="text-red-500">*</span>
-          </label>
-          <select v-model="form.region" required
-                  class="w-full p-3 border rounded-lg dark:bg-[#272729] dark:border-[#343536] dark:text-white">
-              <option value="SEOUL">서울</option>
-              <option value="GYEONGGI">경기/인천</option>
-              <option value="DAEJEON">대전/충청</option>
-              <option value="BUSAN">부산/경남</option>
-              <option value="GWANGJU">광주/전라</option>
-              <option value="ETC">기타 (온라인 포함)</option>
-          </select>
       </div>
 
       <!-- 3. 상세 내용 -->

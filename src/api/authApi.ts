@@ -1,18 +1,12 @@
 import api from './axios';
 
-/**
- * Auth API Service
- * - 백엔드 AuthController와 매핑
- */
 export const authApi = {
-    
     /**
-     * Access Token 갱신 요청
-     * - Refresh Token은 쿠키(HttpOnly)에 담겨 자동으로 전송됨
-     * @returns 새로운 accessToken
+     * AccessToken 재발급 (Silent Refresh)
+     * - HttpOnly 쿠키에 저장된 RefreshToken을 사용하여 새로운 AccessToken을 받음
+     * POST /api/auth/refresh
      */
-    async refreshAccessToken() {
-        // 응답: { accessToken: "..." }
+    async refreshToken() {
         const { data } = await api.post<{ accessToken: string }>('/auth/refresh');
         return data.accessToken;
     }

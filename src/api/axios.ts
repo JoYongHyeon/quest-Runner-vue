@@ -1,28 +1,32 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 
 /**
- * Axios Instance 설정
- * - 기본 URL 설정 (Vite Proxy 사용 시 상대 경로)
- * - 요청/응답 인터셉터 설정 (토큰 자동 주입, 에러 처리)
+ * AccessToken을 메모리에 저장 (Security 강화)
+ * - localStorage에 저장하지 않아 XSS 공격으로부터 보호됩니다.
  */
+let accessToken: string | null = null;
+
+/**
+ * 외부(useAuth 등)에서 토큰을 주입하는 함수
+ */
+export const setAccessToken = (token: string | null) => {
+    accessToken = token;
+};
+
 const apiClient: AxiosInstance = axios.create({
-    baseURL: '/api', // Vite Proxy 설정에 맞춤
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000, // 10초 타임아웃
+    withCredentials: true, // [중요] RefreshToken 쿠키 전송을 위해 필수
+    timeout: 10000,
 });
 
-/**
- * [Request Interceptor]
- * - API 요청 전, 로컬 스토리지의 AccessToken을 헤더에 자동 주입합니다.
- */
 apiClient.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-            // 토큰이 존재하면 Authorization 헤더에 Bearer 토큰 추가
-            config.headers.Authorization = `Bearer ${token}`;
+        // 메모리에 있는 토큰을 헤더에 주입
+        if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
         }
         return config;
     },
@@ -31,24 +35,12 @@ apiClient.interceptors.request.use(
     }
 );
 
-/**
- * [Response Interceptor]
- * - 응답 에러 공통 처리 (401 Unauthorized 등)
- */
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => {
         return response;
     },
     async (error) => {
-        const originalRequest = error.config;
-
-        // 401 에러 발생 시 (토큰 만료 등) 처리 로직
-        // TODO: Refresh Token(쿠키)을 이용한 재발급 로직 추후 구현 필요
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            console.warn('[API] 토큰이 만료되었거나 유효하지 않습니다.');
-            // 예: 로그인 페이지로 이동하거나, 토큰 재발급 API 호출
-        }
-
+        // TODO: 401 발생 시 여기서도 재발급 로직을 넣을 수 있음 (지금은 앱 시작 시 체크로 커버)
         return Promise.reject(error);
     }
 );

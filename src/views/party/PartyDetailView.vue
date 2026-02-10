@@ -112,10 +112,6 @@ const handleApply = async () => {
             
             <!-- Info Badge -->
             <div class="text-center mb-8">
-                <span class="inline-block bg-black text-white px-3 py-1 text-sm font-bold uppercase rounded-sm mb-2
-                             dark:bg-[#343536] dark:text-[#D7DADC]">
-                    {{ party.region }}
-                </span>
                 <p class="text-xs text-gray-500 font-bold dark:text-[#818384]">CREATED AT {{ party.createdAt.split('T')[0] }}</p>
             </div>
 

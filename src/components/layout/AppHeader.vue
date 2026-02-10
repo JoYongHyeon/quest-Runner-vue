@@ -18,7 +18,7 @@ const router = useRouter();
  */
 const handleCreateClick = () => {
     if (currentUser.value?.status === 'PENDING_PROFILE') {
-        if (confirm('모험가 등록(프로필 완성)을 먼저 진행해야 퀘스트를 생성할 수 있습니다.\n이동하시겠습니까?')) {
+        if (confirm('프로필 완성을 먼저 진행해야 퀘스트를 생성할 수 있습니다.\n이동하시겠습니까?')) {
             router.push('/onboarding');
         }
         return;

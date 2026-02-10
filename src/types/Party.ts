@@ -1,4 +1,4 @@
-import type { Position, Region } from './Member';
+import type { Position } from './Member';
 
 export type SlotStatus = 'OPEN' | 'FILLED' | 'LEADER' | 'LOCKED';
 
@@ -15,7 +15,6 @@ export interface Party {
     partyId: number;
     title: string;
     content: string;
-    region: Region;
     createdAt: string;
     leaderNickname: string;
     slots: PartySlot[];
