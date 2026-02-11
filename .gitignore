@@ -26,5 +26,5 @@ dist-ssr
 ### prompt ###
 PM_prompt.md
 vue3_prompt.md
-questrunner_ref/*
+questrunner-ref/*
 

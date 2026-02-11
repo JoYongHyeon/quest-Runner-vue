@@ -19,6 +19,10 @@ export interface MemberProfileResDTO {
     status: 'PENDING_PROFILE' | 'ACTIVE';
     position: Position;
     techStacks: string[];
+    intro?: string;
+    gitUrl?: string;
+    blogUrl?: string;
+    resumeLink?: string;
 }
 
 // [New] 닉네임 중복 확인 응답
@@ -45,7 +49,7 @@ export const memberApi = {
      * 프로필 완성 요청
      * PATCH /api/members/profile
      */
-    async completeOnboarding(req: OnboardingReqDTO) {
+    async completeMyProfile(req: OnboardingReqDTO) {
         const { data } = await api.patch<{ code: string }>('/members/profile', req);
         return data;
     },

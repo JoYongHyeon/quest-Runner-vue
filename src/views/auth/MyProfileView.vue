@@ -4,12 +4,7 @@ import { useRouter } from 'vue-router';
 import { useAuth } from '../../composables/useAuth';
 import { memberApi, type OnboardingReqDTO } from '../../api/memberApi';
 import type { Position } from '../../types/Member';
-
-/**
- * MyProfileView.vue (구 OnboardingView)
- * - 내 프로필 정보를 조회하고 수정하는 페이지입니다.
- * - 최초 가입 시(PENDING_PROFILE)에는 필수 정보를 입력받는 온보딩 역할을 겸합니다.
- */
+import { POSITION_OPTIONS, ALL_TECH_STACKS } from '../../constants/common'; // [New] 공통 상수 Import
 
 const router = useRouter();
 const { currentUser, fetchMyProfile } = useAuth();
@@ -25,22 +20,9 @@ const form = ref<OnboardingReqDTO>({
     resumeLink: ''
 });
 
-// [New] 포지션 옵션 정의 (상수)
-const positionOptions = [
-    { value: 'BACKEND', label: '백엔드' },
-    { value: 'FRONTEND', label: '프론트엔드' },
-    { value: 'DEVOPS', label: 'DevOps' },
-    { value: 'DBA', label: 'DBA' },
-    { value: 'PM', label: '기획자 (PM)' },
-    { value: 'DESIGN', label: '디자이너' },
-];
-
-// 기술 스택 옵션 (주력 언어 위주)
-const techOptions = [
-    'Java', 'Kotlin', 'Python', 'Node.js', 'Go', 
-    'JavaScript', 'TypeScript', 'React', 'Vue', 
-    'Swift', 'Flutter', 'C', 'C++', '기타'
-];
+// [Refactor] 공통 상수 사용
+const positionOptions = POSITION_OPTIONS;
+const techOptions = ALL_TECH_STACKS;
 
 // 닉네임 중복 확인 상태
 const isNicknameChecked = ref(false);
@@ -58,28 +40,25 @@ onMounted(() => {
         form.value.blogUrl = currentUser.value.blogUrl || '';
         form.value.resumeLink = currentUser.value.resumeLink || '';
         
-        // 기존 닉네임이 있다면 이미 검증된 것으로 간주
         if (currentUser.value.nickname) {
             isNicknameChecked.value = true;
         }
     }
 });
 
-// [수정됨] 닉네임 입력 핸들러 (자음/모음 허용하여 입력 끊김 방지)
+// 닉네임 입력 핸들러 (강력한 필터링 + 길이 12자)
 const handleNicknameInput = (e: Event) => {
     isNicknameChecked.value = false;
     const target = e.target as HTMLInputElement;
     
-    // 1. 허용되지 않은 문자(특수문자, 공백) 제거
-    // 한글 자음(ㄱ-ㅎ), 모음(ㅏ-ㅣ)도 허용해야 입력이 자연스러움
+    // 허용되지 않은 문자(특수문자, 공백, 자음/모음 낱자) 제거
     let val = target.value.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]/g, '');
     
-    // 2. 최대 길이 제한 (12자)
+    // 최대 길이 제한 (12자)
     if (val.length > 12) {
         val = val.slice(0, 12);
     }
 
-    // 3. 값 반영
     if (val !== target.value) {
         form.value.nickname = val;
         target.value = val;
@@ -87,7 +66,6 @@ const handleNicknameInput = (e: Event) => {
         form.value.nickname = val;
     }
 
-    // 4. 최소 길이 에러 체크
     if (val.length > 0 && val.length < 2) {
         nicknameError.value = '닉네임은 최소 2글자 이상이어야 합니다.';
     } else {
@@ -95,24 +73,17 @@ const handleNicknameInput = (e: Event) => {
     }
 };
 
-/**
- * 완성형 한글 검사 (자음/모음 단독 불가)
- */
 const isCompleteHangul = (str: string) => {
     const incompleteRegex = /[ㄱ-ㅎㅏ-ㅣ]/;
     return !incompleteRegex.test(str);
 };
 
-/**
- * 닉네임 중복 확인 핸들러
- */
 const checkNickname = async () => {
     if (!form.value.nickname || form.value.nickname.length < 2) {
         nicknameError.value = '닉네임은 2글자 이상이어야 합니다.';
         return;
     }
-
-    // [New] 완성형 한글 체크
+    
     if (!isCompleteHangul(form.value.nickname)) {
         nicknameError.value = '닉네임은 완성된 한글이어야 합니다. (자음/모음 불가)';
         return;
@@ -131,9 +102,10 @@ const checkNickname = async () => {
         if (data.isAvailable) {
             isNicknameChecked.value = true;
             nicknameError.value = '';
+            alert('사용 가능한 닉네임입니다. ✨');
         } else {
             isNicknameChecked.value = false;
-            nicknameError.value = '이미 사용 중인 닉네임입니다.';
+            nicknameError.value = '이미 사용 중인 닉네임입니다. 😢';
         }
     } catch (e) {
         console.error(e);
@@ -144,9 +116,8 @@ const checkNickname = async () => {
 };
 
 const handleSubmit = async () => {
-    // 닉네임 완성형 체크
     if (!isCompleteHangul(form.value.nickname)) {
-        alert('닉네임에 자음/모음만 있는 글자가 포함되어 있습니다.');
+        alert('닉네임은 완성된 한글이어야 합니다. (자음/모음 단독 불가)');
         return;
     }
 
@@ -166,18 +137,23 @@ const handleSubmit = async () => {
             return;
         }
 
-        await memberApi.completeOnboarding(form.value);
-        await fetchMyProfile();
+        const previousStatus = currentUser.value?.status;
 
-        if (currentUser.value?.status === 'PENDING_PROFILE') {
-            alert('모험가 등록이 완료되었습니다! 🎉');
-            router.push('/');
+        await memberApi.completeMyProfile(form.value);
+        await fetchMyProfile();
+        
+        const newStatus = currentUser.value?.status;
+
+        if (previousStatus === 'PENDING_PROFILE' && newStatus === 'ACTIVE') {
+            alert('모험가 등록이 완료되었습니다! 🎉\n이제 파티를 생성하거나 지원할 수 있습니다.');
+            await router.push('/'); 
         } else {
-            alert('프로필이 저장되었습니다.');
+            alert('프로필이 성공적으로 저장되었습니다.');
         }
+
     } catch (e) {
-        console.error(e);
-        alert('저장에 실패했습니다.');
+        console.error('프로필 저장 실패:', e);
+        alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
 };
 </script>
@@ -258,8 +234,8 @@ const handleSubmit = async () => {
         <!-- 3. 자기소개 -->
         <div class="space-y-2">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide dark:text-[#818384]">자기소개</label>
-            <textarea v-model="form.intro" rows="4" maxlength="1000"
-                      class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-[#343536] bg-white dark:bg-[#272729] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none" 
+            <textarea v-model="form.intro" rows="6" maxlength="1000"
+                      class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-[#343536] bg-white dark:bg-[#272729] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-y scrollbar-hide" 
                       placeholder="자신의 경험, 관심사, 협업 스타일 등을 자유롭게 적어주세요. (최대 1000자)"></textarea>
             <div class="text-right text-xs text-gray-400">
                 {{ form.intro?.length || 0 }} / 1000

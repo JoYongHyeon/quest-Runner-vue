@@ -1,18 +1,31 @@
 import api from './axios';
-import type {Position} from "postcss";
-import type {ApplicantStatus, Party} from "../types/Party.ts";
+import type { ApplicantStatus, Party } from "../types/Party.ts";
+import type { Position } from "../types/Member.ts";
 
 // --- DTO Types ---
+
 export interface PartySearchCondition {
     position?: Position;
     page?: number;
     size?: number;
 }
 
+export interface PartySlotCreateDTO {
+    position: Position;
+    techStacks: string[];
+}
+
+// [New] 파티 링크 DTO (Key-Value)
+export interface PartyLinkDTO {
+    label: string;
+    url: string;
+}
+
 export interface PartyCreateReqDTO {
     title: string;
     content: string;
-    slots: Position[];
+    slots: PartySlotCreateDTO[];
+    linkList: PartyLinkDTO[]; // [수정] chatUrl -> linkList (다중 링크 지원)
 }
 
 export interface PartyApplyReqDTO {
@@ -33,7 +46,7 @@ export interface PartyListResDTO {
 }
 
 export interface PartyDetailResDTO extends Party {
-    // 파티 상세 정보 (추가 필드 있을 수 있음)
+    linkList?: PartyLinkDTO[]; // 멤버일 경우에만 값이 채워져서 옴
 }
 
 export interface PartyApplicantResDTO {
@@ -47,14 +60,9 @@ export interface PartyApplicantResDTO {
 
 /**
  * Party API Service
- * - 백엔드 PartyController와 매핑
  */
 export const partyApi = {
 
-    /**
-     * 파티 목록 조회 (페이징, 검색)
-     * GET /api/parties
-     */
     async getPartyList(condition: PartySearchCondition) {
         const { data } = await api.get<{ code: string; data: PartyListResDTO }>('/parties', {
             params: condition
@@ -62,55 +70,31 @@ export const partyApi = {
         return data.data;
     },
 
-    /**
-     * 파티 상세 조회
-     * GET /api/parties/{partyId}
-     */
     async getPartyDetail(partyId: number) {
         const { data } = await api.get<{ code: string; data: PartyDetailResDTO }>(`/parties/${partyId}`);
         return data.data;
     },
 
-    /**
-     * 파티 생성
-     * POST /api/parties
-     */
     async createParty(req: PartyCreateReqDTO) {
         const { data } = await api.post<{ code: string; data: { partyId: number } }>('/parties', req);
         return data.data;
     },
 
-    /**
-     * 파티 지원
-     * POST /api/parties/apply
-     */
     async applyParty(req: PartyApplyReqDTO) {
         const { data } = await api.post<{ code: string }>('/parties/apply', req);
         return data;
     },
 
-    /**
-     * 내 파티 목록 조회 (관리용)
-     * GET /api/parties/my
-     */
     async getMyParties() {
         const { data } = await api.get<{ code: string; data: Party[] }>('/parties/my');
         return data.data;
     },
 
-    /**
-     * 파티 지원자 목록 조회 (파티장용)
-     * GET /api/parties/{partyId}/applicants
-     */
     async getApplicants(partyId: number) {
         const { data } = await api.get<{ code: string; data: PartyApplicantResDTO[] }>(`/parties/${partyId}/applicants`);
         return data.data;
     },
 
-    /**
-     * 지원자 수락/거절 결정
-     * PATCH /api/parties/applicants/{applicantId}
-     */
     async decideApplicant(applicantId: number, req: ApplicantDecisionReqDTO) {
         const { data } = await api.patch<{ code: string }>(`/parties/applicants/${applicantId}`, req);
         return data;

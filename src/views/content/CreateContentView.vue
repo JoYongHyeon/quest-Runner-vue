@@ -5,9 +5,9 @@ import PartyCreateForm from '../../components/domain/PartyCreateForm.vue';
 // 탭 관리 (파티, 커뮤니티, 질문 등)
 const activeTab = ref('PARTY');
 const tabs = [
-    { id: 'PARTY', label: '⚔️ 파티 모집', disabled: false },
-    { id: 'COMMUNITY', label: '📝 자유 게시판', disabled: true },
-    { id: 'QNA', label: '❓ 질문 & 답변', disabled: true },
+    { id: 'PARTY', label: '파티 모집', disabled: false },
+    { id: 'COMMUNITY', label: '자유 게시판', disabled: true },
+    { id: 'QNA', label: '질문 & 답변', disabled: true },
 ];
 </script>
 
