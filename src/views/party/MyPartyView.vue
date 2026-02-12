@@ -132,16 +132,24 @@ const closeModal = () => {
                     </div>
                 </div>
                 <div class="flex gap-2">
+                  <!-- 상세보기 버튼 -->
                     <button @click="router.push(`/party/${party.partyId}`)" 
                             class="btn px-3 py-1.5 text-xs bg-white border border-gray-300 text-gray-700 hover:bg-gray-50
                                    dark:bg-[#272729] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#333]">
                         상세보기
                     </button>
-                    <button @click="openManageModal(party.partyId)" 
+                  <!-- 지원자 관리 버튼 -->
+                    <button @click="openManageModal(party.partyId)"
                             class="btn px-3 py-1.5 text-xs bg-yellow-100 text-yellow-800 hover:bg-yellow-200
                                    dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50">
                         지원자 관리
                     </button>
+                  <!-- 수정 버튼 -->
+                  <button @click="router.push(`/party/${party.partyId}/edit`)"
+                          class="btn px-3 py-1.5 text-xs bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200
+                                   dark:bg-[#343536] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#404142]">
+                    ⚙️ 수정
+                  </button>
                 </div>
             </div>
         </div>

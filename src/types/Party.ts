@@ -9,6 +9,7 @@ export interface PartySlot {
     slotId: number;
     position: Position;
     status: SlotStatus;
+    techStacks: string[];
 }
 
 export interface Party {
