@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { partyApi } from '../../api/partyApi';
-import type { Party, PartySearchCondition, PartySlot } from '../../types/Party';
+import {partyApi, type PartySearchCondition} from '../../api/partyApi';
+import type { Party, PartySlot } from '../../types/Party';
 import { formatDateTime } from '../../utils/dateUtils';
 
 const router = useRouter();
@@ -30,10 +30,16 @@ const goToDetail = (partyId: number) => {
     router.push(`/party/${partyId}`);
 };
 
+const isRecruiting = (slots: PartySlot[]) => {
+    return slots.some(s => s.status === 'OPEN');
+};
+
 const getRecruitStatus = (slots: PartySlot[]) => {
     const total = slots.length;
     const filled = slots.filter(s => s.status !== 'OPEN').length; 
-    return `(${filled}/${total})`;
+    
+    if (filled === total) return "모집완료";
+    return `모집중 (${filled}/${total})`;
 };
 </script>
 
@@ -107,7 +113,10 @@ const getRecruitStatus = (slots: PartySlot[]) => {
             <h3 class="text-base font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition-colors my-0.5
                        dark:text-[#D7DADC] dark:group-hover:text-blue-400 flex items-center gap-2">
                 {{ party.title }}
-                <span class="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
+                <span class="text-[10px] font-normal px-1.5 py-0.5 rounded-full border"
+                      :class="isRecruiting(party.slots) 
+                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 border-blue-100 dark:border-blue-800' 
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-600'">
                     {{ getRecruitStatus(party.slots) }}
                 </span>
             </h3>

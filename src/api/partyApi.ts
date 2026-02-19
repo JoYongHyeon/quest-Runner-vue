@@ -1,11 +1,11 @@
 import api from './axios';
-import type { ApplicantStatus, Party } from "../types/Party.ts";
+import type { ApplicantStatus, Party, SlotStatus } from "../types/Party.ts";
 import type { Position } from "../types/Member.ts";
 
 // --- DTO Types ---
 
 /**
- * 파티 검색 조건 (QueryDSL 필터링용)
+ * [DTO] 파티 검색 조건 (QueryDSL 필터링용)
  */
 export interface PartySearchCondition {
     /** 검색할 포지션 (백엔드, 프론트엔드 등) */
@@ -17,7 +17,7 @@ export interface PartySearchCondition {
 }
 
 /**
- * 파티 생성 시 슬롯(Slot) 요청 데이터
+ * [DTO] 파티 생성 시 슬롯(Slot) 요청 데이터
  */
 export interface PartySlotCreateDTO {
     /** 모집 포지션 */
@@ -27,19 +27,21 @@ export interface PartySlotCreateDTO {
 }
 
 /**
- * 파티 수정 시 슬롯(Slot) 요청 데이터
+ * [DTO] 파티 수정 시 슬롯(Slot) 요청 데이터
  */
 export interface PartySlotUpdateDTO {
     /** 슬롯 식별자 (수정 시 필수, 신규 생성 시 없음) */
-    slotId?: number,
+    slotId?: number;
     /** 모집 포지션 */
-    position: Position,
+    position: Position;
     /** 요구 기술 스택 목록 */
     techStacks: string[];
+    /** 슬롯 상태 (참고용, 실제 수정은 서버 로직 따름) */
+    status?: SlotStatus;
 }
 
 /**
- * 파티 초대 링크 정보 (Key-Value)
+ * [DTO] 파티 초대 링크 정보 (Key-Value)
  */
 export interface PartyLinkDTO {
     /** 링크 라벨 (예: 디스코드, 노션) */
@@ -49,21 +51,21 @@ export interface PartyLinkDTO {
 }
 
 /**
- * 파티 생성 요청 DTO
+ * [DTO] 파티 생성 요청
  */
 export interface PartyCreateReqDTO {
-    /** 파티 제목 */
+    /** 파티 제목 (5~100자) */
     title: string;
     /** 파티 상세 내용 */
     content: string;
-    /** 모집 슬롯 목록 */
+    /** 모집 슬롯 목록 (최소 1개) */
     slots: PartySlotCreateDTO[];
     /** 초대 링크 목록 */
     linkList: PartyLinkDTO[];
 }
 
 /**
- * 파티 수정 요청 DTO
+ * [DTO] 파티 수정 요청
  */
 export interface PartyUpdateReqDTO {
     /** 파티 제목 */
@@ -77,7 +79,7 @@ export interface PartyUpdateReqDTO {
 }
 
 /**
- * 파티 지원 요청 DTO
+ * [DTO] 파티 지원 요청
  */
 export interface PartyApplyReqDTO {
     /** 지원할 슬롯 ID */
@@ -87,7 +89,7 @@ export interface PartyApplyReqDTO {
 }
 
 /**
- * 지원자 수락/거절 요청 DTO
+ * [DTO] 지원자 수락/거절 요청
  */
 export interface ApplicantDecisionReqDTO {
     /** 결정 상태 (ACCEPTED | REJECTED) */
@@ -95,12 +97,12 @@ export interface ApplicantDecisionReqDTO {
 }
 
 /**
- * 파티 목록 조회 응답 DTO (Page)
+ * [DTO] 파티 목록 조회 응답 (Page)
  */
 export interface PartyListResDTO {
     /** 파티 목록 데이터 */
     content: Party[];
-    /** 페이징 정보 */
+    /** 페이징 정보 (Spring Data Pageable) */
     pageable: any;
     /** 전체 페이지 수 */
     totalPages: number;
@@ -111,29 +113,95 @@ export interface PartyListResDTO {
 }
 
 /**
- * 파티 상세 조회 응답 DTO
+ * [Inner DTO] 매칭된 멤버 정보
  */
-export interface PartyDetailResDTO extends Party {
-    /** 멤버 전용 초대 링크 (멤버일 경우에만 포함) */
-    linkList?: PartyLinkDTO[];
+export interface MatchedMemberDTO {
+    /** 회원 ID */
+    memberId: number;
+    /** 닉네임 */
+    nickname: string;
+    /** 깃허브 링크 (Optional) */
+    gitUrl?: string;
+    /** 블로그 링크 (Optional) */
+    blogUrl?: string;
 }
 
 /**
- * 파티 지원자 목록 조회 응답 DTO
+ * [DTO] 슬롯 상세 정보 (매칭 멤버 포함)
+ * - 기존 PartySlot 타입을 확장하거나 대체합니다.
+ */
+export interface SlotDetailDTO {
+    slotId: number;
+    position: Position;
+    status: SlotStatus;
+    techStacks: string[];
+    /** 매칭된 멤버 정보 (LOCKED 상태일 때만 존재) */
+    matchedMember?: MatchedMemberDTO;
+}
+
+/**
+ * [DTO] 파티 상세 조회 응답
+ */
+export interface PartyDetailResDTO {
+    partyId: number;
+    title: string;
+    content: string;
+    createdAt: string;
+    /** 리더 식별자 */
+    leaderId: number;
+    leaderNickname: string;
+    status: string; // PartyStatus
+    region?: string;
+    
+    /** 슬롯 목록 (매칭 정보 포함) */
+    slots: SlotDetailDTO[];
+    
+    /** 멤버 전용 초대 링크 (권한 있을 때만) */
+    linkList?: PartyLinkDTO[];
+    /** 나의 지원 상태 (로그인 유저) */
+    myApplicantStatus?: ApplicantStatus;
+    
+    /** 상태 변경 사유 (추방/취소 등) */
+    changeReason?: string;
+}
+
+/**
+ * [DTO] 내가 지원한 파티 목록 조회 응답
+ */
+export interface PartyApplicationResDTO {
+    /** 지원 내역 식별자 (취소/탈퇴 시 필요) */
+    applicantId: number;
+    partyId: number;
+    title: string;
+    leaderNickname: string;
+    position: Position;
+    /** 지원 상태 (PENDING, ACCEPTED, REJECTED, QUIT, KICKED) */
+    status: ApplicantStatus; 
+    appliedAt: string;
+}
+
+/**
+ * [DTO] 파티 지원자 목록 조회 응답 (파티장용)
  */
 export interface PartyApplicantResDTO {
-    /** 지원 식별자 ID */
     applicantId: number;
-    /** 지원자 닉네임 */
+    memberId: number;
     nickname: string;
-    /** 지원자 주 포지션 */
     position: Position;
-    /** 지원 메시지 */
     message: string;
-    /** 지원 상태 (PENDING, ACCEPTED, REJECTED) */
     status: ApplicantStatus;
-    /** 지원 일시 */
     appliedAt: string;
+    gitUrl?: string;
+    blogUrl?: string;
+    resumeLink?: string;
+}
+
+/**
+ * [DTO] 강제 추방 요청
+ */
+export interface PartyKickReqDTO {
+    /** 추방 사유 (필수) */
+    reason: string;
 }
 
 /**
@@ -206,6 +274,33 @@ export const partyApi = {
     },
 
     /**
+     * 내가 지원한 파티 목록을 조회합니다. (지원자 권한)
+     * GET /api/parties/my-applied
+     */
+    async getMyAppliedParties() {
+        const { data } = await api.get<{ code: string; data: PartyApplicationResDTO[] }>('/parties/my-applied');
+        return data.data;
+    },
+
+    /**
+     * 지원을 취소합니다. (승인 전 PENDING 상태일 때만 가능)
+     * DELETE /api/parties/applications/{applicantId}
+     */
+    async cancelApplication(applicantId: number) {
+        const { data } = await api.delete<{ code: string }>(`/parties/applications/${applicantId}`);
+        return data;
+    },
+
+    /**
+     * 파티를 탈퇴합니다. (승인 후 ACCEPTED 상태일 때만 가능)
+     * PATCH /api/parties/applications/{applicantId}/quit
+     */
+    async quitParty(applicantId: number) {
+        const { data } = await api.patch<{ code: string }>(`/parties/applications/${applicantId}/quit`);
+        return data;
+    },
+
+    /**
      * 내 파티에 지원한 지원자 목록을 조회합니다. (파티장 전용)
      * GET /api/parties/{partyId}/applicants
      * @param partyId 파티 ID
@@ -223,6 +318,17 @@ export const partyApi = {
      */
     async decideApplicant(applicantId: number, req: ApplicantDecisionReqDTO) {
         const { data } = await api.patch<{ code: string }>(`/parties/applicants/${applicantId}`, req);
+        return data;
+    },
+
+    /**
+     * 지원자를 강제 추방합니다. (파티장 권한)
+     * PATCH /api/parties/applicants/{applicantId}/kick
+     * @param applicantId 추방할 지원 내역 ID
+     * @param req 추방 사유
+     */
+    async kickApplicant(applicantId: number, req: PartyKickReqDTO) {
+        const { data } = await api.patch<{ code: string }>(`/parties/applicants/${applicantId}/kick`, req);
         return data;
     }
 };

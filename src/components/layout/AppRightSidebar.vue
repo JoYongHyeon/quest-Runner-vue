@@ -16,8 +16,8 @@
             </h3>
             
             <p class="text-sm text-gray-500 leading-relaxed mb-4 dark:text-[#818384]">
-                이 공간은 추후 모험가 랭킹, 길드 공지 등<br/>
-                특별한 기능들로 채워질 예정입니다.
+                이 공간은 특별한 기능들로 채워질 예정입니다.<br/>
+              좋은 아이디어가 있다면 말씀해주세요
             </p>
 
             <div class="text-xs text-blue-500 font-bold cursor-pointer hover:underline dark:text-blue-400">
