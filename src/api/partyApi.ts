@@ -330,5 +330,32 @@ export const partyApi = {
     async kickApplicant(applicantId: number, req: PartyKickReqDTO) {
         const { data } = await api.patch<{ code: string }>(`/parties/applicants/${applicantId}/kick`, req);
         return data;
+    },
+
+    /**
+     * 파티 모집을 취소합니다. (파티장 전용)
+     * PATCH /api/parties/{partyId}/cancel
+     */
+    async cancelParty(partyId: number) {
+        const { data } = await api.patch<{ code: string }>(`/parties/${partyId}/cancel`);
+        return data;
+    },
+
+    /**
+     * 퀘스트를 공식적으로 시작합니다. (파티장 전용)
+     * - [P-S006] RECRUITING -> IN_PROGRESS 상태로 변경됩니다.
+     */
+    async startQuest(partyId: number) {
+        const { data } = await api.patch<{ code: string }>(`/parties/${partyId}/start`);
+        return data;
+    },
+
+    /**
+     * 퀘스트를 성공적으로 완료(종료) 합니다.
+     * - [P-S007] IN_PROGRESS -> COMPLETED 상태로 변경됩니다.
+     */
+    async completeQuest(partyId: number) {
+        const { data } = await api.patch<{ code: string }>(`/parties/${partyId}/complete`);
+        return data;
     }
 };

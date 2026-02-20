@@ -8,10 +8,13 @@ import type { SlotDetailDTO, MatchedMemberDTO } from '../../../../api/partyApi';
  * - LOCKED 상태: 매칭된 유저 정보를 보여주고, 클릭 시 프로필 모달을 요청합니다.
  */
 
-defineProps<{
+// 1. defineProps 를 props 변수로 할당 (스크립트 내 접근을 위해 필수)
+const props = defineProps<{
   slots: SlotDetailDTO[];
   leaderNickname: string;
   selectedSlotId?: number | null;
+  /** [P-017] 종료 또는 취소 여부 (인터랙션 차단용) */
+  isClosed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +22,14 @@ const emit = defineEmits<{
   (e: 'showProfile', member: MatchedMemberDTO): void;
 }>();
 
+/**
+ * 슬롯 클릭 핸들러
+ * - 파티가 닫힌(isClosed) 상태라면 클릭 이벤트를 무시하여 개인정보를 보호함
+ */
 const handleClick = (slot: SlotDetailDTO) => {
+    // [FIX] props.isClosed 로 수정하여 'Cannot find name' 오류 해결
+    if (props.isClosed) return;
+
     // 1. 모집 중일 때: 슬롯 선택 (지원자용)
     if (slot.status === 'OPEN') {
         emit('select', slot);
@@ -32,11 +42,14 @@ const handleClick = (slot: SlotDetailDTO) => {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
+  <!-- [isClosed] 상태일 때 전체 리스트에 비활성 커서 적용 -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8"
+       :class="{ 'cursor-not-allowed': props.isClosed }">
     
-    <!-- 1. Leader Slot (Fixed) -->
+    <!-- 1. Leader Slot (상태에 따른 Grayscale 처리) -->
     <div class="bg-yellow-50 border border-yellow-200 h-40 flex flex-col items-center justify-center p-4 rounded-lg text-center shadow-sm select-none cursor-default
-                dark:bg-yellow-900/20 dark:border-yellow-700">
+                dark:bg-yellow-900/20 dark:border-yellow-700"
+         :class="{ 'grayscale opacity-70 border-gray-300': props.isClosed }">
         <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-2xl mb-2 border border-yellow-200 dark:bg-yellow-800 dark:border-yellow-600">
             👑
         </div>
@@ -44,16 +57,18 @@ const handleClick = (slot: SlotDetailDTO) => {
         <span class="px-2 py-0.5 text-[10px] font-bold bg-yellow-100 text-yellow-800 rounded-full dark:bg-yellow-900 dark:text-yellow-300">LEADER</span>
     </div>
 
-    <!-- 2. Slots -->
+    <!-- 2. Participant Slots -->
     <div v-for="slot in slots" :key="slot.slotId"
          @click="handleClick(slot)"
          class="h-40 flex flex-col items-center justify-center p-2 rounded-lg text-center transition-all relative select-none border"
          :class="[
-            slot.status === 'OPEN'
-                ? (selectedSlotId === slot.slotId
-                    ? 'bg-blue-50 border-blue-500 shadow-md scale-105 cursor-pointer dark:bg-blue-900/30 dark:border-blue-400'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm cursor-pointer dark:bg-[#272729] dark:border-[#343536] dark:hover:border-gray-500')
-                : 'bg-white border-green-200 cursor-pointer hover:border-green-400 hover:shadow-sm dark:bg-[#202022] dark:border-green-900'
+            props.isClosed 
+                ? 'bg-gray-50 border-gray-200 grayscale opacity-60 dark:bg-[#202022] dark:border-[#333]' 
+                : (slot.status === 'OPEN'
+                    ? (selectedSlotId === slot.slotId
+                        ? 'bg-blue-50 border-blue-500 shadow-md scale-105 cursor-pointer dark:bg-blue-900/30 dark:border-blue-400'
+                        : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm cursor-pointer dark:bg-[#272729] dark:border-[#343536] dark:hover:border-gray-500')
+                    : 'bg-white border-green-200 cursor-pointer hover:border-green-400 hover:shadow-sm dark:bg-[#202022] dark:border-green-900')
          ]">
       
       <!-- Case A: 모집 중 (OPEN) -->

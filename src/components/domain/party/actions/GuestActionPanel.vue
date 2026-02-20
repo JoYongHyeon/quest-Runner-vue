@@ -86,7 +86,7 @@ const handleApply = async () => {
                 class="flex-1 py-4 bg-blue-600 text-white rounded-lg font-bold text-lg shadow-md hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2
                        disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none
                        dark:bg-[#D93A00] dark:hover:bg-[#C83500]">
-            <span>🚀</span> 파티 지원하기
+            파티 지원하기
         </button>
         <button @click="$router.push('/')"
                 class="py-3 bg-white border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-colors

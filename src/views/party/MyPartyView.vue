@@ -344,6 +344,15 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center gap-3 shrink-0">
+                  <!-- 1. 파티가 취소된 경우: [취소됨] 안내 배지만 노출 -->
+                  <template v-if="app.partyStatus === 'CANCELED'">
+                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-red-100 text-red-600 border border-red-200">
+                      퀘스트 취소됨
+                    </span>
+                  </template>
+
+                  <!-- 2. 파티가 진행 중인 경우: 기존 상태별 액션 -->
+                  <template v-else>
                     <!-- 상태 뱃지 -->
                     <span class="px-3 py-1 text-xs font-bold rounded-full"
                           :class="{
@@ -355,22 +364,23 @@ onMounted(() => {
                     </span>
 
 
-                  <!-- 상태별 액션 버튼 -->
-                  <!-- 1. 승인 전 취소 (PENDING) -->
-                  <button v-if="app.status === 'PENDING'"
-                          @click="cancelApplication(app.applicantId)"
-                          class="btn px-3 py-1.5 text-xs bg-red-50 text-red-600 border border-red-100 hover:bg-red-100
+                    <!-- 상태별 액션 버튼 -->
+                    <!-- 1. 승인 전 취소 (PENDING) -->
+                    <button v-if="app.status === 'PENDING'"
+                            @click="cancelApplication(app.applicantId)"
+                            class="btn px-3 py-1.5 text-xs bg-red-50 text-red-600 border border-red-100 hover:bg-red-100
                                  dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/40">
-                    지원 취소
-                  </button>
+                      지원 취소
+                    </button>
 
-                  <!-- 2. 승인 후 취소 (ACCEPTED) -->
-                  <button v-else-if="app.status === 'ACCEPTED'"
-                          @click="quitParty(app.applicantId)"
-                          class="btn px-3 py-1.5 text-xs bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:text-red-600
+                    <!-- 2. 승인 후 취소 (ACCEPTED) -->
+                    <button v-else-if="app.status === 'ACCEPTED'"
+                            @click="quitParty(app.applicantId)"
+                            class="btn px-3 py-1.5 text-xs bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 hover:text-red-600
                                  dark:bg-[#343536] dark:text-[#D7DADC] dark:border-[#555] dark:hover:text-red-400">
-                    탈퇴하기
-                  </button>
+                      탈퇴하기
+                    </button>
+                  </template>
 
                     <!-- 상세보기 -->
                     <button @click="router.push({ path: `/party/${app.partyId}`, query: { source: 'my-applied' } })" 
