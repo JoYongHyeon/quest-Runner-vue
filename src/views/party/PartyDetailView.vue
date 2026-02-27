@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { partyApi, type PartyDetailResDTO, type MatchedMemberDTO } from '../../api/partyApi';
+import { partyApi, type PartyDetailResDTO, type MatchedMemberDTO, type SlotDetailDTO, type PartyKickReqDTO } from '../../api/partyApi';
 import { useAuth } from '../../composables/useAuth';
+
+/**
+ * PartyDetailView.vue
+ * - 파티 상세 정보 조회 및 리더 전용 관리 기능을 통합 제공하는 스마트 컴포넌트입니다.
+ * - @vue3_prompt.md 준수: 비즈니스 로직(TS)과 UI(HTML)의 철저한 분리 및 상세 주석 적용.
+ */
 
 // --- Components (Lazy Load) ---
 const PartySlotList = defineAsyncComponent(() => import('../../components/domain/party/common/PartySlotList.vue'));
@@ -11,23 +17,28 @@ const LeaderActionPanel = defineAsyncComponent(() => import('../../components/do
 const MemberActionPanel = defineAsyncComponent(() => import('../../components/domain/party/actions/MemberActionPanel.vue'));
 const PendingActionPanel = defineAsyncComponent(() => import('../../components/domain/party/actions/PendingActionPanel.vue'));
 const BannedActionPanel = defineAsyncComponent(() => import('../../components/domain/party/actions/BannedActionPanel.vue'));
+const SlotApplicantsModal = defineAsyncComponent(() => import('../../components/domain/party/modals/SlotApplicantsModal.vue'));
 
 const route = useRoute();
 const router = useRouter();
 const { currentUser } = useAuth();
 
-// --- State ---
-const party = ref<PartyDetailResDTO | null>(null);
-const isLoading = ref(true);
-const selectedSlotId = ref<number | null>(null);
+// --- State (상태 관리) ---
+const party = ref<PartyDetailResDTO | null>(null); // 파티 상세 데이터
+const isLoading = ref(true); // 로딩 상태
+const selectedSlotId = ref<number | null>(null); // 지원을 위해 선택된 슬롯 ID
+const selectedProfile = ref<MatchedMemberDTO | null>(null); // 모달에 표시할 멤버 프로필
+const managingSlot = ref<SlotDetailDTO | null>(null); // 리더가 관리 중인 슬롯 정보
 
 const partyId = Number(route.params.id);
 
-// --- Computed Logic ---
+// --- Computed (계산된 속성) ---
+/** 현재 유저가 파티장인지 여부 */
 const isLeader = computed(() => {
   return currentUser.value && party.value && currentUser.value.id === party.value.leaderId;
 });
 
+/** 나의 지원 상태 */
 const myStatus = computed(() => party.value?.myApplicantStatus);
 
 /**
@@ -36,7 +47,7 @@ const myStatus = computed(() => party.value?.myApplicantStatus);
  */
 const isClosed = computed(() => ['CANCELED', 'COMPLETED'].includes(party.value?.status || ''));
 
-// 역할에 따라 보여줄 하단 액션 패널 결정
+/** 유저 역할에 따라 보여줄 하단 액션 패널 결정 */
 const actionPanelComponent = computed(() => {
   if (isLeader.value) return LeaderActionPanel;
   if (myStatus.value === 'ACCEPTED') return MemberActionPanel;
@@ -45,13 +56,14 @@ const actionPanelComponent = computed(() => {
   return GuestActionPanel;
 });
 
-// --- Methods ---
-/**
- * 파티 상세 데이터를 서버에서 가져옵니다.
+// --- Methods (비즈니스 로직) ---
+
+/** 
+ * 파티 상세 데이터를 서버에서 가져옵니다. 
+ * [GET] /api/parties/{partyId}
  */
 const fetchPartyDetail = async () => {
   try {
-    // 갱신 시 로딩바 표시 여부는 선택 사항 (여기선 조용히 갱신)
     if (!party.value) isLoading.value = true;
     party.value = await partyApi.getPartyDetail(partyId);
   } catch (e) {
@@ -63,25 +75,58 @@ const fetchPartyDetail = async () => {
   }
 };
 
-/**
- * 슬롯 클릭 시 선택 상태를 토글합니다.
- */
-const handleSlotSelect = (slot: any) => {
+/** 슬롯 클릭 핸들러 (지원자용 선택 로직) */
+const handleSlotSelect = (slotId: number) => {
   // [Guard] 리더이거나 이미 지원 상태가 있거나 파티가 닫혔으면 무시
   if (isLeader.value || myStatus.value || isClosed.value) return;
-  if (slot.status !== 'OPEN') return;
-  selectedSlotId.value = selectedSlotId.value === slot.slotId ? null : slot.slotId;
+  selectedSlotId.value = selectedSlotId.value === slotId ? null : slotId;
 };
 
-const selectedProfile = ref<MatchedMemberDTO | null>(null);
-
-/**
- * 매칭된 멤버의 프로필 모달을 엽니다.
- */
+/** 멤버 프로필 모달 오픈 */
 const handleShowProfile = (member: MatchedMemberDTO) => {
     // [Guard] 파티가 닫혔으면 프로필 보기 차단 (정보 보호)
     if (isClosed.value) return;
     selectedProfile.value = member;
+};
+
+/** 리더용 슬롯 관리 모달 오픈 */
+const handleManageApplicants = (slot: SlotDetailDTO) => {
+    managingSlot.value = slot;
+};
+
+/** 
+ * [P-S004] 강제 추방 처리 (리더 전용)
+ * - 슬롯 클릭 -> 프로필 모달 -> 추방 버튼을 통해 트리거됩니다.
+ */
+const handleKickMember = async () => {
+    const applicantId = selectedProfile.value?.applicantId;
+    
+    if (!applicantId) {
+        return;
+    }
+
+    const nickname = selectedProfile.value?.nickname;
+    const reason = prompt(`'${nickname}'님을 정말로 추방하시겠습니까?\n추방 사유를 입력해주세요 (필수):`);
+
+    if (reason === null) return; 
+    if (!reason.trim()) {
+        alert('추방 사유는 필수 입력 사항입니다.');
+        return;
+    }
+
+    try {
+        const req: PartyKickReqDTO = { reason: reason };
+        await partyApi.kickApplicant(applicantId, req);
+        
+        // [P-S004] 추방 성공 메시지
+        alert('추방 처리가 완료되었습니다. 해당 슬롯이 다시 모집 중으로 변경됩니다.');
+        
+        selectedProfile.value = null; // 모달 닫기
+        await fetchPartyDetail(); // UI 갱신 (슬롯이 다시 열리는 시각적 효과)
+    } catch (e: any) {
+        console.error(e);
+        alert(e.response?.data?.message || '추방 처리 중 오류가 발생했습니다.');
+    }
 };
 
 // --- Lifecycle ---
@@ -89,64 +134,54 @@ onMounted(fetchPartyDetail);
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto py-8 px-4">
-    <!-- Loading -->
+  <div class="max-w-4xl mx-auto py-8 px-4 font-sans">
+    <!-- 1. 로딩 상태 -->
     <div v-if="isLoading" class="text-center py-20">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p class="text-gray-500 dark:text-[#818384]">던전 정보를 읽어오는 중...</p>
+        <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mx-auto mb-4"></div>
+        <p class="text-gray-500 font-bold dark:text-[#818384]">퀘스트 정보를 불러오는 중...</p>
     </div>
 
-    <!-- Main Content (Modern Card UI) -->
-    <div v-else-if="party" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden dark:bg-[#1A282D] dark:border-[#343536]">
+    <!-- 2. 메인 컨텐츠 -->
+    <div v-else-if="party" class="bg-white rounded-3xl border border-gray-200 shadow-2xl overflow-hidden dark:bg-[#1A282D] dark:border-[#343536] transition-all duration-500">
       
-      <!-- 파티 취소 알림 배너 -->
+      <!-- 상태 배너 (CANCELED / COMPLETED) -->
       <div v-if="party.status === 'CANCELED'" 
-           class="bg-red-600 p-4 text-white text-center font-bold flex items-center justify-center gap-2">
-           <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-           </svg>
-           본 퀘스트는 파티장의 사정으로 모집이 중단(취소)되었습니다.
+           class="bg-gradient-to-r from-red-600 to-red-700 p-4 text-white text-center font-black uppercase tracking-widest text-sm shadow-inner">
+           모집 중단된 퀘스트
       </div>
-
-      <!-- [NEW] 완료 배너 -->
       <div v-if="party.status === 'COMPLETED'" 
-           class="bg-green-600 p-4 text-white text-center font-bold flex items-center justify-center gap-2">
-           <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-           </svg>
-           축하합니다! 본 퀘스트의 모든 여정이 성공적으로 완료되었습니다.
+           class="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white text-center font-black uppercase tracking-widest text-sm shadow-inner">
+           성공적으로 완료된 퀘스트
       </div>
 
-      <!-- Header -->
-      <div class="px-8 py-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center dark:bg-[#202022] dark:border-[#343536]">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900 mb-1 dark:text-[#D7DADC]">{{ party.title }}</h2>
-            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-[#818384]">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                    {{ party.region || 'ONLINE' }}
-                </span>
-                <span>•</span>
-                <span>Created at {{ party.createdAt.split('T')[0] }}</span>
-            </div>
+      <!-- 헤더 섹션 -->
+      <div class="px-10 py-10 border-b border-gray-100 bg-gray-50/30 dark:bg-[#202022] dark:border-[#343536]">
+        <h2 class="text-4xl font-black text-gray-900 mb-3 dark:text-[#D7DADC] tracking-tighter">{{ party.title }}</h2>
+        <div class="flex items-center gap-4 text-xs font-black text-gray-400 uppercase tracking-widest">
+            <span class="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">ONLINE</span>
+            <span class="text-gray-300">|</span>
+            <span>Created At {{ party.createdAt.split('T')[0] }}</span>
         </div>
       </div>
 
-      <div class="p-8">
+      <div class="p-10">
+        <!-- 슬롯 그리드 컴포넌트 -->
+        <h3 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 dark:text-[#818384]">Recruitment Status</h3>
         
-        <!-- Slot Grid -->
-        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 dark:text-[#818384]">Recruitment Status</h3>
         <PartySlotList 
             :slots="party.slots" 
             :leader-nickname="party.leaderNickname"
             :selected-slot-id="selectedSlotId" 
             :is-closed="isClosed"
+            :is-leader="isLeader"
             @select="handleSlotSelect"
             @showProfile="handleShowProfile"
+            @manageApplicants="handleManageApplicants"
         />
 
-        <hr class="my-8 border-gray-100 dark:border-[#343536]">
+        <hr class="my-12 border-gray-100 dark:border-[#343536]">
 
-        <!-- Action Panel (파티가 닫히지 않았을 때만 노출) -->
+        <!-- 하단 인터랙션 패널 (파티가 활성 상태일 때만) -->
         <component 
             v-if="!isClosed"
             :is="actionPanelComponent" 
@@ -155,66 +190,65 @@ onMounted(fetchPartyDetail);
             @refresh="fetchPartyDetail"
         />
 
-        <!-- [NEW] 종료/취소된 파티일 경우 안내 문구 -->
-        <div v-else class="text-center py-10 bg-gray-50 rounded-2xl dark:bg-[#202022] border border-gray-100 dark:border-[#333]">
-            <p class="text-gray-500 dark:text-gray-400 font-medium">이미 종료된 퀘스트입니다. 다른 멋진 퀘스트를 찾아보세요!</p>
-            <button @click="router.push('/')" class="mt-4 px-8 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg active:scale-95">
-              다른 퀘스트 보러가기
+        <!-- 종료 안내 영역 (CANCELED / COMPLETED) -->
+        <div v-else class="text-center py-16 bg-gray-50 rounded-[2.5rem] dark:bg-[#202022] border-2 border-dashed border-gray-200 dark:border-[#333]">
+            <div class="text-6xl mb-6 grayscale">🏆</div>
+            <p class="text-gray-500 dark:text-gray-400 font-black text-xl mb-8 tracking-tight">이미 여정이 끝난 퀘스트입니다.</p>
+            <button @click="router.push('/')" class="px-12 py-4 bg-gray-900 text-white rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95 uppercase tracking-widest text-sm">
+              Explore Other Quests
             </button>
         </div>
       </div>
     </div>
 
-    <!-- User Profile Modal -->
-    <div v-if="selectedProfile" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="selectedProfile = null">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+    <!-- 3. [MODAL] 슬롯 관리 (리더 전용) -->
+    <SlotApplicantsModal 
+        v-if="managingSlot" 
+        :slot="managingSlot" 
+        @close="managingSlot = null"
+        @refresh="fetchPartyDetail(); managingSlot = null;"
+    />
+
+    <!-- 4. [MODAL] 유저 프로필 및 추방 -->
+    <div v-if="selectedProfile" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" @click.self="selectedProfile = null">
+        <div class="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl max-w-sm w-full overflow-hidden border border-white/10 transform transition-all scale-100">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-center relative">
-                <button @click="selectedProfile = null" class="absolute top-4 right-4 text-white/70 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+            <div class="bg-gradient-to-br from-indigo-600 to-blue-900 p-10 text-center relative">
+                <button @click="selectedProfile = null" class="absolute top-6 right-6 text-white/40 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full mx-auto flex items-center justify-center text-3xl mb-3 border-2 border-white/30 shadow-inner text-white font-bold">
+                <div class="w-28 h-24 bg-white/10 backdrop-blur-xl rounded-[2rem] mx-auto flex items-center justify-center text-5xl mb-6 border border-white/20 shadow-2xl text-white font-black uppercase">
                     {{ selectedProfile.nickname.substring(0, 1) }}
                 </div>
-                <h3 class="text-xl font-bold text-white tracking-wide">{{ selectedProfile.nickname }}</h3>
-                <p class="text-blue-100 text-sm mt-1">Quest Runner Member</p>
+                <h3 class="text-3xl font-black text-white tracking-tighter">{{ selectedProfile.nickname }}</h3>
+                <p class="text-blue-200 text-[10px] font-black mt-2 tracking-[0.4em] uppercase opacity-80">Quest Member</p>
             </div>
 
             <!-- Body -->
-            <div class="p-6 space-y-4">
-                <!-- GitHub -->
-                <a :href="selectedProfile.gitUrl || '#'" :target="selectedProfile.gitUrl ? '_blank' : ''" 
-                   class="flex items-center p-3 rounded-xl transition-all group border"
-                   :class="selectedProfile.gitUrl ? 'bg-gray-50 hover:bg-gray-100 border-gray-200 cursor-pointer dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:border-gray-600' : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700'">
-                    <div class="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center text-white shrink-0 mr-4 shadow-sm group-hover:scale-105 transition-transform">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs font-bold text-gray-500 uppercase dark:text-gray-400">GitHub</div>
-                        <div class="text-sm font-medium text-gray-900 truncate dark:text-gray-200">{{ selectedProfile.gitUrl || 'Not Connected' }}</div>
-                    </div>
+            <div class="p-10 space-y-4 bg-white dark:bg-gray-900">
+                <a :href="selectedProfile.gitUrl || '#'" target="_blank" 
+                   class="flex items-center p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex-1 group-hover:text-blue-600 transition-colors">GitHub Repository</span>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
-
-                <!-- Blog -->
-                <a :href="selectedProfile.blogUrl || '#'" :target="selectedProfile.blogUrl ? '_blank' : ''"
-                   class="flex items-center p-3 rounded-xl transition-all group border"
-                   :class="selectedProfile.blogUrl ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 cursor-pointer dark:bg-orange-900/10 dark:hover:bg-orange-900/20 dark:border-orange-800' : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700'">
-                    <div class="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center text-white shrink-0 mr-4 shadow-sm group-hover:scale-105 transition-transform">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs font-bold text-orange-600 uppercase dark:text-orange-400">Tech Blog</div>
-                        <div class="text-sm font-medium text-gray-900 truncate dark:text-gray-200">{{ selectedProfile.blogUrl || 'Not Connected' }}</div>
-                    </div>
+                <a :href="selectedProfile.blogUrl || '#'" target="_blank" 
+                   class="flex items-center p-5 rounded-2xl border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group">
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest flex-1 group-hover:text-orange-500 transition-colors">Technical Blog</span>
+                    <svg class="w-5 h-5 text-gray-300 group-hover:text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </a>
             </div>
             
-            <!-- Footer -->
-            <div class="p-4 bg-gray-50 border-t border-gray-100 dark:bg-gray-800/50 dark:border-gray-700 text-center">
-                <button @click="selectedProfile = null" class="w-full py-2.5 rounded-lg font-bold text-gray-600 hover:bg-gray-200 hover:text-gray-800 transition-colors dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200">
-                    닫기
+            <!-- Footer (강제 추방 버튼) -->
+            <div class="p-8 bg-gray-50 border-t border-gray-100 dark:bg-gray-800/50 dark:border-gray-700 flex flex-col gap-4">
+                <!-- [결함 2 해결] 리더 권한이고 파티가 아직 진행 중일 때만 추방 버튼 활성화 -->
+                <button v-if="isLeader && !isClosed" 
+                        @click="handleKickMember"
+                        class="w-full py-4 bg-red-50 text-red-600 rounded-3xl font-black hover:bg-red-100 transition-all text-sm border border-red-100 shadow-sm active:scale-95 uppercase tracking-widest">
+                    Kick Out Member
+                </button>
+                <button @click="selectedProfile = null" 
+                        class="w-full py-2 text-gray-400 font-bold hover:text-gray-600 transition-colors text-[10px] uppercase tracking-[0.5em]">
+                    Close Profile
                 </button>
             </div>
         </div>

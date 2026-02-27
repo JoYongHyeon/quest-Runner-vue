@@ -6,7 +6,11 @@ import AppRightSidebar from '../components/layout/AppRightSidebar.vue';
 import { useSidebar } from '../composables/useSidebar';
 import { useRoute } from 'vue-router';
 
-// Sidebar 상태에 따라 메인 컨텐츠의 margin-left 조정
+/**
+ * DefaultLayout.vue
+ * - [Layout Final Polish] 목록을 화면 끝까지 더 넓게 확장하여 우측 여백을 최소화함.
+ */
+
 const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
 const route = useRoute();
 </script>
@@ -36,23 +40,24 @@ const route = useRoute();
         </svg>
       </button>
 
-      <!-- 4. Center Content & Right Sidebar -->
-      <main class="flex-1 min-w-0 p-0 md:p-0 transition-all duration-300 ease-in-out"
+      <!-- 4. Center Content Area -->
+      <main class="flex-1 min-w-0 transition-all duration-300 ease-in-out"
             :class="isSidebarOpen ? 'lg:ml-[270px]' : 'lg:ml-0'">
             
-        <div class="flex justify-center w-full px-0 py-2">
-            <!-- [수정] 사이드바 닫혔을 때 max-w를 1600px까지 확장하여 여백 최소화 -->
-            <div class="flex gap-4 w-full transition-all duration-300"
-                 :class="isSidebarOpen ? 'max-w-[1250px]' : 'max-w-[1500px]'">
+        <!-- [Fix] justify-center 상태에서 max-width 를 최대한으로 늘려 여백을 압축 -->
+        <div class="flex justify-center w-full px-4 py-2">
+            
+            <!-- [Fix] max-width 를 1920px(Full HD 가로) 수준으로 확장 -->
+            <div class="flex gap-6 w-full transition-all duration-300"
+                 :class="isSidebarOpen ? 'max-w-[1800px]' : 'max-w-[2000px]'">
                 
-                <!-- Page Content (Router View) -->
-                <div class="flex-1 min-w-0" 
-                     :class="route.meta.hideRightSidebar ? 'w-full' : ''">
+                <!-- Page Content: 이제 목록이 화면을 거의 가득 채우며 길게 늘어남 -->
+                <div class="flex-1 min-w-0">
                      <slot /> 
                 </div>
 
                 <!-- 5. Right Sidebar (Widgets) -->
-                <AppRightSidebar v-if="!route.meta.hideRightSidebar" />
+                <AppRightSidebar v-if="!route.meta.hideRightSidebar" class="hidden xl:block shrink-0" />
             </div>
         </div>
       </main>
@@ -66,3 +71,9 @@ const route = useRoute();
     </div>
   </div>
 </template>
+
+<style scoped>
+main {
+    will-change: margin-left;
+}
+</style>
