@@ -10,6 +10,7 @@ import type {Party} from '../../types/Party';
 /**
  * MyPartyView.vue
  * - 나의 활동(내가 만든 퀘스트, 내가 지원한 퀘스트)을 통합 관리하는 대시보드 페이지입니다.
+ * - [Update] 대시보드에서는 현황만 보여주고(탈퇴 버튼 제거), 중요한 액션은 상세 페이지로 유도합니다.
  */
 
 const router = useRouter();
@@ -43,6 +44,10 @@ const fetchMyApplications = async () => {
     }
 };
 
+/** 
+ * 승인 전 지원 취소 (PENDING)
+ * - 승인 전이므로 대시보드에서 가볍게 취소할 수 있도록 유지합니다.
+ */
 const cancelApplication = async (applicantId: number) => {
   if (!confirm('정말 지원을 취소하시겠습니까?')) return;
   try {
@@ -51,17 +56,6 @@ const cancelApplication = async (applicantId: number) => {
     await fetchMyApplications();
   } catch (e: any) {
     alert(e.response?.data?.message || '취소 실패');
-  }
-}
-
-const quitParty = async (applicantId: number) => {
-  if (!confirm('정말 파티를 탈퇴하시겠습니까?\n탈퇴 시 "중도 탈퇴" 기록이 영구적으로 남게 됩니다.')) return;
-  try {
-    await partyApi.quitParty(applicantId);
-    alert('파티에서 탈퇴하였습니다.');
-    await fetchMyApplications();
-  } catch (e: any) {
-    alert(e.response?.data?.message || '탈퇴 실패');
   }
 }
 
@@ -176,10 +170,19 @@ onMounted(() => {
                     {{ app.status }}
                 </span>
 
-                <button v-if="app.status === 'PENDING' && app.partyStatus !== 'CANCELED'" @click="cancelApplication(app.applicantId)" class="px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 rounded-lg transition-colors">지원 취소</button>
-                <button v-else-if="app.status === 'ACCEPTED' && app.partyStatus !== 'CANCELED'" @click="quitParty(app.applicantId)" class="px-4 py-2 text-[10px] font-black text-gray-400 hover:text-red-600 rounded-lg transition-colors">퀘스트 탈퇴</button>
+                <!-- [Fix] PENDING 일 때의 '지원 취소' 버튼은 유지 (승인 전 가벼운 취소) -->
+                <button v-if="app.status === 'PENDING' && app.partyStatus !== 'CANCELED'" 
+                        @click="cancelApplication(app.applicantId)" 
+                        class="px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    지원 취소
+                </button>
+
+                <!-- [Fix] ACCEPTED 일 때의 '퀘스트 탈퇴' 버튼 제거 (상세 페이지로 동선 일원화) -->
                 
-                <button @click="router.push(`/party/${app.partyId}`)" class="px-6 py-3 bg-gray-100 text-gray-900 rounded-xl font-black hover:bg-gray-200 transition-all text-xs">상세 보기</button>
+                <button @click="router.push(`/party/${app.partyId}`)" 
+                        class="px-6 py-3 bg-gray-100 text-gray-900 rounded-xl font-black hover:bg-gray-200 transition-all text-xs">
+                    상세 보기
+                </button>
             </div>
         </div>
     </div>

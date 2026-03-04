@@ -126,6 +126,8 @@ export interface PartyDetailResDTO {
     title: string;
     content: string;
     createdAt: string;
+    startedAt?: string;
+    completedAt?: string;
     leaderId: number;
     leaderNickname: string;
     status: string; 

@@ -107,6 +107,14 @@ const router = createRouter({
       name: 'my-party',
       component: MyPartyView,
       meta: { layout: 'DefaultLayout' }
+    },
+
+    // 8. 플랫폼 소개 페이지 (가이드)
+    {
+      path: '/about',
+      name: 'about',
+      component: () => import('../views/content/AboutView.vue'), // Lazy loading
+      meta: { layout: 'DefaultLayout', hideRightSidebar: true }
     }
   ]
 });

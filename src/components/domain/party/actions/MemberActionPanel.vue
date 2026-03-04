@@ -1,49 +1,75 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { PartyDetailResDTO } from '../../../../api/partyApi';
+import { partyApi, type PartyDetailResDTO } from '../../../../api/partyApi';
+import { useAuth } from '../../../../composables/useAuth';
 
 /**
  * MemberActionPanel.vue
- * - [상태: ACCEPTED]
- * - 파티 멤버를 위한 패널 (채팅방 링크, 탈퇴하기 등)
+ * - [Update] 상단에 작업 공간이 노출되므로, 하단 패널은 심플한 상태 안내와 '탈퇴/목록' 버튼만 유지합니다.
  */
 
-defineProps<{
+const props = defineProps<{
   party: PartyDetailResDTO;
 }>();
 
-const router = useRouter();
+const emit = defineEmits<{
+  (e: 'refresh'): void;
+}>();
 
-const goToMyParty = () => {
-    router.push('/my-party?tab=APPLIED');
+const router = useRouter();
+const { currentUser } = useAuth();
+
+// 현재 접속한 멤버의 applicantId 를 찾아 탈퇴 API 에 사용
+const getMyApplicantId = () => {
+    if (!currentUser.value) return null;
+    const mySlot = props.party.slots.find(s => s.matchedMember?.memberId === currentUser.value?.id);
+    return mySlot?.matchedMember?.applicantId;
+};
+
+const handleQuit = async () => {
+    const applicantId = getMyApplicantId();
+    if (!applicantId) {
+        alert('지원 정보를 찾을 수 없습니다.');
+        return;
+    }
+
+    if (!confirm('정말 퀘스트를 포기하고 탈퇴하시겠습니까?\n이 결정은 귀하의 평판(자진 탈퇴 이력)에 기록됩니다.')) return;
+
+    try {
+        await partyApi.quitParty(applicantId);
+        alert('퀘스트에서 탈퇴하였습니다. 슬롯이 다시 열렸습니다.');
+        emit('refresh'); 
+    } catch (e: any) {
+        alert(e.response?.data?.message || '탈퇴 처리에 실패했습니다.');
+    }
 };
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-6 bg-green-50 border-4 border-black dark:bg-[#202022] dark:border-[#343536] text-center">
-    <div class="text-3xl mb-2">🎉</div>
-    <h3 class="text-xl font-bold text-green-700 dark:text-green-400">환영합니다! 동료가 되셨군요.</h3>
-    <p class="text-sm text-gray-600 dark:text-gray-400">
-        파티장 <strong>{{ party.leaderNickname }}</strong>님과 함께 멋진 여정을 시작하세요.
-    </p>
-
-    <!-- 멤버 전용 링크 -->
-    <div v-if="party.linkList && party.linkList.length > 0" class="mt-4 p-4 bg-white rounded border-2 border-gray-200 text-left dark:bg-[#272729] dark:border-[#555]">
-        <p class="text-xs font-bold text-gray-500 mb-2 uppercase">Member Links</p>
-        <ul class="space-y-2">
-            <li v-for="(link, idx) in party.linkList" :key="idx" class="flex items-center gap-2 text-sm">
-                <span class="font-bold">🔗 {{ link.label }}:</span>
-                <a :href="link.url" target="_blank" class="text-blue-600 hover:underline truncate">{{ link.url }}</a>
-            </li>
-        </ul>
-    </div>
-    <div v-else class="mt-4 p-4 bg-white/50 rounded border border-dashed border-gray-400 text-sm text-gray-500">
-        아직 등록된 멤버 전용 링크가 없습니다.
+  <div class="flex flex-col sm:flex-row items-center justify-between p-6 bg-gray-50 border border-gray-200 rounded-2xl dark:bg-[#202022] dark:border-[#343536] gap-4">
+    
+    <!-- 좌측 상태 텍스트 -->
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl shadow-sm dark:bg-emerald-900/30">
+            🎉
+        </div>
+        <div>
+            <h3 class="font-black text-gray-900 dark:text-[#D7DADC]">환영합니다! 동료가 되셨군요.</h3>
+            <p class="text-xs text-gray-500 font-bold dark:text-[#818384] mt-0.5">
+                상단의 <span class="text-blue-600 dark:text-blue-400">팀원 전용 작업 공간</span>을 확인해 주세요.
+            </p>
+        </div>
     </div>
 
-    <div class="mt-4 flex justify-center gap-2">
-        <button @click="goToMyParty" class="btn btn-outline-secondary text-sm bg-white hover:bg-gray-100 dark:bg-[#343536] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#404142]">
-            내 활동 관리 (탈퇴 등)
+    <!-- 우측 심플 액션 버튼들 -->
+    <div class="flex items-center gap-3 w-full sm:w-auto">
+        <button @click="handleQuit" 
+                class="px-5 py-2.5 bg-white border border-gray-300 text-gray-600 font-black rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all text-sm w-full sm:w-auto dark:bg-[#272729] dark:border-[#555] dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800">
+            퀘스트 하차하기
+        </button>
+        <button @click="router.push('/my-party?tab=APPLIED')" 
+                class="px-6 py-2.5 bg-gray-900 text-white font-black rounded-xl hover:bg-black transition-all text-sm shadow-md w-full sm:w-auto">
+            내 목록으로
         </button>
     </div>
   </div>

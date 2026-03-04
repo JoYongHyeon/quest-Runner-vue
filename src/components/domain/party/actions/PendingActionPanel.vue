@@ -15,20 +15,30 @@ const goToMyParty = () => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center p-8 bg-yellow-50 border-4 border-black dark:bg-[#202022] dark:border-[#343536] text-center">
-    <div class="text-4xl mb-3">⏳</div>
-    <h3 class="text-lg font-bold text-yellow-700 dark:text-yellow-400 mb-2">승인 대기 중입니다.</h3>
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        파티장의 수락을 기다리고 있습니다.<br>
-        알림이 올 때까지 잠시만 기다려주세요!
-    </p>
+  <div class="flex flex-col sm:flex-row items-center justify-between p-6 bg-yellow-50/50 border border-yellow-200 rounded-2xl dark:bg-yellow-900/10 dark:border-yellow-900/30 gap-4">
     
-    <div class="flex gap-3">
-        <button @click="$router.push('/')" class="btn bg-white border border-gray-300 hover:bg-gray-50 text-sm dark:bg-[#343536] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#404142]">
-            다른 파티 구경하기
+    <!-- 좌측 텍스트 -->
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-2xl shadow-sm dark:bg-yellow-900/30">
+            ⏳
+        </div>
+        <div>
+            <h3 class="text-lg font-black text-yellow-800 dark:text-yellow-500 tracking-tight">승인 대기 중입니다</h3>
+            <p class="text-xs text-yellow-700/70 dark:text-yellow-400/70 font-bold mt-1">
+                파티장의 수락을 기다리고 있습니다. 알림을 기다려주세요!
+            </p>
+        </div>
+    </div>
+    
+    <!-- 우측 버튼 -->
+    <div class="flex gap-3 w-full sm:w-auto">
+        <button @click="goToMyParty" 
+                class="flex-1 sm:flex-none px-6 py-3 bg-white border border-yellow-300 text-yellow-700 font-black rounded-xl hover:bg-yellow-100 transition-all text-sm shadow-sm dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-400 dark:hover:bg-yellow-900/40">
+            내 활동 목록으로
         </button>
-        <button @click="goToMyParty" class="btn bg-white border border-red-200 text-red-600 hover:bg-red-50 text-sm dark:bg-[#343536] dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20">
-            지원 취소하러 가기
+        <button @click="router.push('/')" 
+                class="flex-1 sm:flex-none px-6 py-3 bg-gray-900 text-white font-black rounded-xl hover:bg-black transition-all text-sm shadow-md">
+            다른 파티 구경하기
         </button>
     </div>
   </div>

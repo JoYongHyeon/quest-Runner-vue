@@ -6,8 +6,7 @@ import { useAuth } from '../../composables/useAuth';
 
 /**
  * PartyDetailView.vue
- * - 파티 상세 정보 조회 및 리더 전용 관리 기능을 통합 제공하는 스마트 컴포넌트입니다.
- * - @vue3_prompt.md 준수: 비즈니스 로직(TS)과 UI(HTML)의 철저한 분리 및 상세 주석 적용.
+ * - [Update] 영문 라벨을 직관적인 한글(UX)로 변경.
  */
 
 // --- Components (Lazy Load) ---
@@ -24,30 +23,25 @@ const router = useRouter();
 const { currentUser } = useAuth();
 
 // --- State (상태 관리) ---
-const party = ref<PartyDetailResDTO | null>(null); // 파티 상세 데이터
-const isLoading = ref(true); // 로딩 상태
-const selectedSlotId = ref<number | null>(null); // 지원을 위해 선택된 슬롯 ID
-const selectedProfile = ref<MatchedMemberDTO | null>(null); // 모달에 표시할 멤버 프로필
-const managingSlot = ref<SlotDetailDTO | null>(null); // 리더가 관리 중인 슬롯 정보
+const party = ref<PartyDetailResDTO | null>(null);
+const isLoading = ref(true);
+const selectedSlotId = ref<number | null>(null);
+const selectedProfile = ref<MatchedMemberDTO | null>(null);
+const managingSlot = ref<SlotDetailDTO | null>(null); 
 
 const partyId = Number(route.params.id);
 
 // --- Computed (계산된 속성) ---
-/** 현재 유저가 파티장인지 여부 */
 const isLeader = computed(() => {
   return currentUser.value && party.value && currentUser.value.id === party.value.leaderId;
 });
 
-/** 나의 지원 상태 */
 const myStatus = computed(() => party.value?.myApplicantStatus);
 
-/**
- * 파티가 종료되거나 취소되었는지 여부
- * - @PM_prompt.md: 종료된 여정은 모든 인터랙션이 중단되어야 함
- */
 const isClosed = computed(() => ['CANCELED', 'COMPLETED'].includes(party.value?.status || ''));
 
-/** 유저 역할에 따라 보여줄 하단 액션 패널 결정 */
+const isInProgress = computed(() => party.value?.status === 'IN_PROGRESS');
+
 const actionPanelComponent = computed(() => {
   if (isLeader.value) return LeaderActionPanel;
   if (myStatus.value === 'ACCEPTED') return MemberActionPanel;
@@ -56,12 +50,18 @@ const actionPanelComponent = computed(() => {
   return GuestActionPanel;
 });
 
-// --- Methods (비즈니스 로직) ---
+// 영문 Status 를 한글로 변환하는 헬퍼 함수
+const getKoreanStatus = (status?: string) => {
+    switch(status) {
+        case 'RECRUITING': return '모집 중';
+        case 'IN_PROGRESS': return '진행 중';
+        case 'COMPLETED': return '완료됨';
+        case 'CANCELED': return '취소됨';
+        default: return '알 수 없음';
+    }
+};
 
-/** 
- * 파티 상세 데이터를 서버에서 가져옵니다. 
- * [GET] /api/parties/{partyId}
- */
+// --- Methods ---
 const fetchPartyDetail = async () => {
   try {
     if (!party.value) isLoading.value = true;
@@ -75,35 +75,23 @@ const fetchPartyDetail = async () => {
   }
 };
 
-/** 슬롯 클릭 핸들러 (지원자용 선택 로직) */
 const handleSlotSelect = (slotId: number) => {
-  // [Guard] 리더이거나 이미 지원 상태가 있거나 파티가 닫혔으면 무시
   if (isLeader.value || myStatus.value || isClosed.value) return;
   selectedSlotId.value = selectedSlotId.value === slotId ? null : slotId;
 };
 
-/** 멤버 프로필 모달 오픈 */
 const handleShowProfile = (member: MatchedMemberDTO) => {
-    // [Guard] 파티가 닫혔으면 프로필 보기 차단 (정보 보호)
     if (isClosed.value) return;
     selectedProfile.value = member;
 };
 
-/** 리더용 슬롯 관리 모달 오픈 */
 const handleManageApplicants = (slot: SlotDetailDTO) => {
     managingSlot.value = slot;
 };
 
-/** 
- * [P-S004] 강제 추방 처리 (리더 전용)
- * - 슬롯 클릭 -> 프로필 모달 -> 추방 버튼을 통해 트리거됩니다.
- */
 const handleKickMember = async () => {
     const applicantId = selectedProfile.value?.applicantId;
-    
-    if (!applicantId) {
-        return;
-    }
+    if (!applicantId) return;
 
     const nickname = selectedProfile.value?.nickname;
     const reason = prompt(`'${nickname}'님을 정말로 추방하시겠습니까?\n추방 사유를 입력해주세요 (필수):`);
@@ -117,28 +105,25 @@ const handleKickMember = async () => {
     try {
         const req: PartyKickReqDTO = { reason: reason };
         await partyApi.kickApplicant(applicantId, req);
-        
-        // [P-S004] 추방 성공 메시지
         alert('추방 처리가 완료되었습니다. 해당 슬롯이 다시 모집 중으로 변경됩니다.');
-        
-        selectedProfile.value = null; // 모달 닫기
-        await fetchPartyDetail(); // UI 갱신 (슬롯이 다시 열리는 시각적 효과)
+        selectedProfile.value = null; 
+        await fetchPartyDetail(); 
     } catch (e: any) {
         console.error(e);
         alert(e.response?.data?.message || '추방 처리 중 오류가 발생했습니다.');
     }
 };
 
-// --- Lifecycle ---
 onMounted(fetchPartyDetail);
 </script>
 
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 font-sans">
+    
     <!-- 1. 로딩 상태 -->
     <div v-if="isLoading" class="text-center py-20">
         <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mx-auto mb-4"></div>
-        <p class="text-gray-500 font-bold dark:text-[#818384]">퀘스트 정보를 불러오는 중...</p>
+        <p class="text-gray-500 font-bold dark:text-[#818384]">데이터를 불러오는 중입니다...</p>
     </div>
 
     <!-- 2. 메인 컨텐츠 -->
@@ -153,20 +138,47 @@ onMounted(fetchPartyDetail);
            class="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white text-center font-black uppercase tracking-widest text-sm shadow-inner">
            성공적으로 완료된 퀘스트
       </div>
+      
+      <!-- 진행 중 알림 배너 (한글화) -->
+      <div v-if="isInProgress" 
+           class="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 text-white text-center font-black uppercase tracking-widest text-sm shadow-inner flex items-center justify-center gap-3">
+          <span class="animate-pulse w-2 h-2 rounded-full bg-white"></span>
+          여정 진행 중 (시작일: {{ party.startedAt?.split('T')[0] || '기록 없음' }})
+      </div>
 
-      <!-- 헤더 섹션 -->
+      <!-- 헤더 섹션 (한글화) -->
       <div class="px-10 py-10 border-b border-gray-100 bg-gray-50/30 dark:bg-[#202022] dark:border-[#343536]">
         <h2 class="text-4xl font-black text-gray-900 mb-3 dark:text-[#D7DADC] tracking-tighter">{{ party.title }}</h2>
         <div class="flex items-center gap-4 text-xs font-black text-gray-400 uppercase tracking-widest">
-            <span class="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">ONLINE</span>
+            <!-- [Fix] 영어 상태 대신 한글 상태 사용 -->
+            <span class="px-3 py-1 rounded-lg" 
+                  :class="isInProgress ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'">
+                {{ getKoreanStatus(party.status) }}
+            </span>
             <span class="text-gray-300">|</span>
-            <span>Created At {{ party.createdAt.split('T')[0] }}</span>
+            <span>생성일: {{ party.createdAt.split('T')[0] }}</span>
         </div>
       </div>
 
       <div class="p-10">
-        <!-- 슬롯 그리드 컴포넌트 -->
-        <h3 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 dark:text-[#818384]">Recruitment Status</h3>
+        
+        <!-- 진행 중일 때 리더와 확정된 멤버에게만 보여주는 프라이빗 작업 공간 -->
+        <div v-if="isInProgress && (isLeader || myStatus === 'ACCEPTED') && party.linkList?.length" 
+             class="mb-10 p-6 bg-blue-50 border border-blue-100 rounded-2xl dark:bg-blue-900/10 dark:border-blue-900/30">
+            <h3 class="text-sm font-black text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2 dark:text-blue-400">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                팀원 전용 작업 공간
+            </h3>
+            <div class="flex flex-wrap gap-3">
+                <a v-for="link in party.linkList" :key="link.label" :href="link.url" target="_blank"
+                   class="px-4 py-2 bg-white border border-blue-200 text-blue-700 font-bold rounded-xl hover:shadow-md hover:border-blue-400 transition-all dark:bg-[#1A282D] dark:border-blue-800/50 dark:text-blue-300 dark:hover:border-blue-500">
+                    {{ link.label }} 바로가기 ↗
+                </a>
+            </div>
+        </div>
+
+        <!-- 슬롯 그리드 컴포넌트 (타이틀 한글화) -->
+        <h3 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 dark:text-[#818384]">현재 팀원 현황</h3>
         
         <PartySlotList 
             :slots="party.slots" 
@@ -194,9 +206,17 @@ onMounted(fetchPartyDetail);
         <div v-else class="text-center py-16 bg-gray-50 rounded-[2.5rem] dark:bg-[#202022] border-2 border-dashed border-gray-200 dark:border-[#333]">
             <div class="text-6xl mb-6 grayscale">🏆</div>
             <p class="text-gray-500 dark:text-gray-400 font-black text-xl mb-8 tracking-tight">이미 여정이 끝난 퀘스트입니다.</p>
-            <button @click="router.push('/')" class="px-12 py-4 bg-gray-900 text-white rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95 uppercase tracking-widest text-sm">
-              Explore Other Quests
-            </button>
+            <div class="flex items-center justify-center gap-4 flex-col sm:flex-row">
+                <!-- [Fix] 리더면 만든 퀘스트 탭으로, 지원자면 지원한 퀘스트 탭으로 이동 -->
+                <button @click="router.push(isLeader ? '/my-party' : '/my-party?tab=APPLIED')" 
+                        class="px-10 py-4 bg-gray-900 text-white rounded-2xl font-black hover:bg-black transition-all shadow-xl active:scale-95 text-sm">
+                    내 활동 목록으로
+                </button>
+                <button @click="router.push('/')" 
+                        class="px-10 py-4 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-black hover:bg-gray-50 transition-all active:scale-95 text-sm dark:bg-[#272729] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#343536]">
+                    새로운 퀘스트 찾기
+                </button>
+            </div>
         </div>
       </div>
     </div>
@@ -211,6 +231,7 @@ onMounted(fetchPartyDetail);
 
     <!-- 4. [MODAL] 유저 프로필 및 추방 -->
     <div v-if="selectedProfile" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" @click.self="selectedProfile = null">
+        <!-- 기존 모달 내용 유지 ... -->
         <div class="bg-white dark:bg-gray-800 rounded-[3rem] shadow-2xl max-w-sm w-full overflow-hidden border border-white/10 transform transition-all scale-100">
             <!-- Header -->
             <div class="bg-gradient-to-br from-indigo-600 to-blue-900 p-10 text-center relative">
@@ -240,15 +261,14 @@ onMounted(fetchPartyDetail);
             
             <!-- Footer (강제 추방 버튼) -->
             <div class="p-8 bg-gray-50 border-t border-gray-100 dark:bg-gray-800/50 dark:border-gray-700 flex flex-col gap-4">
-                <!-- [결함 2 해결] 리더 권한이고 파티가 아직 진행 중일 때만 추방 버튼 활성화 -->
                 <button v-if="isLeader && !isClosed" 
                         @click="handleKickMember"
                         class="w-full py-4 bg-red-50 text-red-600 rounded-3xl font-black hover:bg-red-100 transition-all text-sm border border-red-100 shadow-sm active:scale-95 uppercase tracking-widest">
-                    Kick Out Member
+                    동료 강제 추방하기
                 </button>
                 <button @click="selectedProfile = null" 
                         class="w-full py-2 text-gray-400 font-bold hover:text-gray-600 transition-colors text-[10px] uppercase tracking-[0.5em]">
-                    Close Profile
+                    창 닫기
                 </button>
             </div>
         </div>

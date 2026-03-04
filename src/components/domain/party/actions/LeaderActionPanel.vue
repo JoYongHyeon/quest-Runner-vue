@@ -56,44 +56,46 @@ const handleCancelParty = async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-6 bg-yellow-50 border-4 border-black dark:bg-[#202022] dark:border-[#343536]">
-    <div class="flex items-center justify-between mb-2">
-      <div class="font-bold text-lg dark:text-[#D7DADC]">퀘스트 관리 센터</div>
-      <span class="px-2 py-1 bg-yellow-200 text-yellow-800 text-[10px] font-bold rounded uppercase">Leader</span>
+  <div class="flex flex-col sm:flex-row items-center justify-between p-6 bg-gray-50 border border-gray-200 rounded-2xl dark:bg-[#202022] dark:border-[#343536] gap-4">
+    
+    <!-- 좌측 타이틀 영역 -->
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 text-xl shadow-sm dark:bg-yellow-900/30">
+          👑
+      </div>
+      <div>
+          <h3 class="font-black text-gray-900 dark:text-[#D7DADC]">파티 관리자 센터</h3>
+          <p class="text-xs text-gray-500 font-bold dark:text-[#818384] mt-0.5">
+              퀘스트의 여정을 제어할 수 있습니다.
+          </p>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      <!-- 1. 시작하기 -->
-      <button v-if="party.status === 'RECRUITING'"
-              @click="handleStartQuest"
-              class="px-4 py-2.5 bg-blue-600 text-white rounded font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-blue-700 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all">
-        퀘스트 시작
+    <!-- 우측 여정 제어 및 목록 버튼 -->
+    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+      <!-- 여정 제어 버튼들 (상태에 따라 1개만 노출됨) -->
+      <button v-if="party.status === 'RECRUITING'" @click="handleStartQuest" 
+              class="px-5 py-2.5 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all text-sm shadow-md w-full sm:w-auto active:scale-95">
+        퀘스트 시작하기
+      </button>
+      <button v-if="party.status === 'IN_PROGRESS'" @click="handleCompleteQuest" 
+              class="px-5 py-2.5 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-700 transition-all text-sm shadow-md w-full sm:w-auto active:scale-95">
+        성공적으로 완료
       </button>
 
-      <!-- 2. 완료하기 -->
-      <button v-if="party.status === 'IN_PROGRESS'"
-              @click="handleCompleteQuest"
-              class="px-4 py-2.5 bg-green-600 text-white rounded font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-green-700 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all">
-        완료(성공)
-      </button>
-
-      <!-- 3. 수정하기 -->
-      <button @click="router.push(`/party/${party.partyId}/edit`)"
-              class="px-4 py-2.5 bg-white border-2 border-black font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-100 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all dark:bg-[#343536] dark:text-[#D7DADC]">
+      <!-- 상시 노출 관리 버튼 -->
+      <button @click="router.push(`/party/${party.partyId}/edit`)" 
+              class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-black rounded-xl hover:bg-gray-50 transition-all text-sm w-full sm:w-auto dark:bg-[#272729] dark:border-[#555] dark:text-[#D7DADC] dark:hover:bg-[#343536] active:scale-95">
         정보 수정
       </button>
-
-      <!-- 4. 취소하기 -->
-      <button @click="handleCancelParty"
-              class="px-4 py-2.5 bg-red-500 text-white rounded font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-red-600 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all">
+      <button @click="handleCancelParty" 
+              class="px-4 py-2.5 bg-white border border-red-200 text-red-600 font-black rounded-xl hover:bg-red-50 transition-all text-sm w-full sm:w-auto dark:bg-[#272729] dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20 active:scale-95">
         모집 취소
       </button>
+      <button @click="router.push('/my-party')" 
+              class="px-4 py-2.5 bg-gray-900 text-white font-black rounded-xl hover:bg-black transition-all text-sm shadow-md w-full sm:w-auto active:scale-95">
+        내 목록으로
+      </button>
     </div>
-
-    <!-- [Simple] 내 활동 목록으로 돌아가기 버튼 하나로 통일 -->
-    <button @click="router.push('/my-party')" 
-            class="w-full py-3 mt-2 bg-white border-2 border-black font-bold hover:bg-gray-100 transition-all dark:bg-[#272729] dark:text-[#D7DADC]">
-      내 활동 목록으로 돌아가기
-    </button>
   </div>
 </template>
