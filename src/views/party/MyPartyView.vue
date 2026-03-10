@@ -3,7 +3,7 @@ import {onMounted, ref, watch} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {
   partyApi,
-  type PartyApplication
+  type PartyApplicationResDTO
 } from '../../api/partyApi';
 import type {Party} from '../../types/Party';
 
@@ -20,7 +20,7 @@ const activeTab = ref<'CREATED' | 'APPLIED'>('CREATED');
 const isLoading = ref(false);
 
 const myParties = ref<Party[]>([]); 
-const myApplications = ref<PartyApplication[]>([]); 
+const myApplications = ref<PartyApplicationResDTO[]>([]);
 
 const fetchMyParties = async () => {
     try {

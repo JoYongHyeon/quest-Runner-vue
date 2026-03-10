@@ -3,7 +3,7 @@ import type { Position } from './Member';
 export type SlotStatus = 'OPEN' | 'FILLED' | 'LEADER' | 'LOCKED';
 
 // 백엔드 PartyStatus Enum 대응
-export type PartyStatus = 'RECRUITING' | 'COMPLETED';
+export type PartyStatus = 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELED';
 
 export interface PartySlot {
     slotId: number;

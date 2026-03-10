@@ -62,7 +62,9 @@ const menuGroups = ref([
 ]);
 
 const toggleGroup = (index: number) => {
+  if (menuGroups.value[index]) {
     menuGroups.value[index].isOpen = !menuGroups.value[index].isOpen;
+  }
 };
 
 // 현재 경로와 링크가 일치하는지 확인하는 함수

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { partyApi, type PartyCreateReqDTO, type PartyUpdateReqDTO, type PartySlotUpdateDTO } from '../../api/partyApi';
 import { POSITION_OPTIONS, TECH_PRESETS } from '../../constants/common';
@@ -123,6 +123,8 @@ const addSlot = () => {
  */
 const removeSlot = (index: number) => {
     const slot = form.value.slots[index];
+    if (!slot) return;
+
     let message = '슬롯을 삭제하시겠습니까?\n대기 중인 지원자가 있다면 해당 지원 내역도 함께 삭제됩니다.';
 
     // LOCKED 슬롯 삭제 시 경고 강화

@@ -33,7 +33,7 @@ const partyId = Number(route.params.id);
 
 // --- Computed (계산된 속성) ---
 const isLeader = computed(() => {
-  return currentUser.value && party.value && currentUser.value.id === party.value.leaderId;
+  return !!(currentUser.value && party.value && currentUser.value.id === party.value.leaderId);
 });
 
 const myStatus = computed(() => party.value?.myApplicantStatus);
